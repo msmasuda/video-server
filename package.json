@@ -1,0 +1,18 @@
+{
+  "name": "video-server",
+  "version": "1.0.0",
+  "description": "ローカル動画サーバー（外付けHDDのmp4をブラウザで再生）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["video", "express", "local"],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}
