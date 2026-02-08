@@ -13,24 +13,32 @@ if (!fs.existsSync(VIDEO_PATH)) {
   console.warn('起動時に環境変数 VIDEO_PATH を設定してください。例: VIDEO_PATH=/Volumes/HDD/Videos npm start');
 }
 
-/** 指定フォルダ配下の .mp4 を再帰的に取得（相対パスで返す） */
-function findMp4Files(dir, baseDir = dir) {
-  const results = [];
+/**
+ * 指定フォルダ配下をツリー構造で取得
+ * - folder: { type: 'folder', name, children }
+ * - file:   { type: 'file', name, path }  path は VIDEO_PATH からの相対パス
+ */
+function buildTree(dir, baseDir = dir) {
+  const nodes = [];
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const ent of entries) {
       const full = path.join(dir, ent.name);
       const relative = path.relative(baseDir, full);
       if (ent.isDirectory()) {
-        results.push(...findMp4Files(full, baseDir));
+        const children = buildTree(full, baseDir);
+        nodes.push({ type: 'folder', name: ent.name, children });
       } else if (ent.isFile() && ent.name.toLowerCase().endsWith('.mp4')) {
-        results.push(relative);
+        nodes.push({ type: 'file', name: ent.name, path: relative });
       }
     }
   } catch (err) {
     console.error('readdir error:', dir, err.message);
   }
-  return results.sort();
+  return nodes.sort((a, b) => {
+    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+  });
 }
 
 /** 安全に動画ルート内の絶対パスに変換（パストラバーサル対策） */
@@ -45,10 +53,10 @@ function resolveVideoPath(relativePath) {
   return realResolved;
 }
 
-// 動画一覧 API
+// 動画一覧 API（フォルダツリー形式）
 app.get('/api/videos', (req, res) => {
-  const list = findMp4Files(VIDEO_PATH);
-  res.json({ basePath: VIDEO_PATH, videos: list });
+  const tree = buildTree(VIDEO_PATH);
+  res.json({ basePath: VIDEO_PATH, tree });
 });
 
 // 動画ストリーミング（Range 対応でシーク可能）

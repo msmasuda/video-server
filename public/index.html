@@ -47,26 +47,57 @@
       flex-direction: column;
       align-items: center;
     }
-    .video-list {
+    .video-tree {
       list-style: none;
       margin: 0;
       padding: 0;
+      font-size: 0.9rem;
     }
-    .video-list li {
+    .video-tree ul {
+      list-style: none;
       margin: 0;
-      padding: 0.5rem 1rem;
+      padding: 0;
+      padding-left: 1rem;
+      border-left: 1px solid rgba(255,255,255,.08);
+      margin-left: 0.5rem;
+    }
+    .video-tree .tree-folder {
+      padding: 0.35rem 0.5rem;
       cursor: pointer;
-      border-radius: 8px;
-      margin: 0 0.5rem 2px 0;
+      border-radius: 6px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
     }
-    .video-list li:hover {
+    .video-tree .tree-folder:hover {
       background: rgba(255,255,255,.08);
     }
-    .video-list li.active {
+    .video-tree .tree-folder .arrow {
+      font-size: 0.65rem;
+      color: var(--muted);
+      transition: transform 0.15s ease;
+    }
+    .video-tree .tree-folder.collapsed .arrow {
+      transform: rotate(-90deg);
+    }
+    .video-tree .tree-folder.collapsed + ul {
+      display: none;
+    }
+    .video-tree .tree-file {
+      padding: 0.35rem 0.5rem 0.35rem 1.25rem;
+      cursor: pointer;
+      border-radius: 6px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .video-tree .tree-file:hover {
+      background: rgba(255,255,255,.08);
+    }
+    .video-tree .tree-file.active {
       background: rgba(124, 156, 255, .2);
       color: var(--accent);
     }
@@ -95,7 +126,7 @@
   <div class="layout">
     <header>動画サーバー</header>
     <aside>
-      <ul class="video-list" id="videoList"></ul>
+      <ul class="video-tree" id="videoTree"></ul>
       <p class="loading" id="listStatus">読み込み中…</p>
     </aside>
     <main>
@@ -110,7 +141,7 @@
     const VIDEO_KEY = 'video-server-current';
     const TIME_KEY = 'video-server-time';
 
-    const videoListEl = document.getElementById('videoList');
+    const videoTreeEl = document.getElementById('videoTree');
     const listStatusEl = document.getElementById('listStatus');
     const playerWrap = document.getElementById('playerWrap');
     const emptyMsg = document.getElementById('emptyMsg');
@@ -124,9 +155,8 @@
     }
 
     function setActiveItem(relativePath) {
-      const idx = videoList.indexOf(relativePath);
-      videoListEl.querySelectorAll('li').forEach(li => {
-        li.classList.toggle('active', parseInt(li.dataset.index, 10) === idx);
+      videoTreeEl.querySelectorAll('.tree-file').forEach(el => {
+        el.classList.toggle('active', el.dataset.path === relativePath);
       });
     }
 
@@ -165,36 +195,72 @@
     }
 
     video.addEventListener('timeupdate', () => {
-      const li = videoListEl.querySelector('li.active');
-      const rel = li ? videoList[parseInt(li.dataset.index, 10)] : null;
+      const el = videoTreeEl.querySelector('.tree-file.active');
+      const rel = el ? el.dataset.path : null;
       if (rel) saveState(rel, video.currentTime);
     });
 
     video.addEventListener('ended', () => {
-      const li = videoListEl.querySelector('li.active');
-      const rel = li ? videoList[parseInt(li.dataset.index, 10)] : null;
+      const el = videoTreeEl.querySelector('.tree-file.active');
+      const rel = el ? el.dataset.path : null;
       if (rel) saveState(rel, 0);
     });
+
+    function flattenTree(nodes) {
+      const out = [];
+      function walk(arr) {
+        for (const n of arr) {
+          if (n.type === 'file') out.push(n.path);
+          if (n.type === 'folder' && n.children) walk(n.children);
+        }
+      }
+      walk(nodes);
+      return out;
+    }
+
+    function renderTree(nodes) {
+      let html = '';
+      for (const n of nodes) {
+        if (n.type === 'folder') {
+          const hasChildren = n.children && n.children.length > 0;
+          html += `<div class="tree-folder" ${hasChildren ? '' : 'style="opacity:.7"'}>`;
+          html += hasChildren ? '<span class="arrow">▼</span>' : '<span class="arrow">・</span>';
+          html += escapeHtml(n.name) + '</div>';
+          if (hasChildren) {
+            html += '<ul>' + renderTree(n.children) + '</ul>';
+          }
+        } else {
+          html += `<li class="tree-file" data-path="${escapeAttr(n.path)}">${escapeHtml(n.name)}</li>`;
+        }
+      }
+      return html;
+    }
+
+    function escapeAttr(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML.replace(/"/g, '&quot;');
+    }
 
     async function loadVideos() {
       try {
         const res = await fetch('/api/videos');
         if (!res.ok) throw new Error(res.statusText);
         const data = await res.json();
-        videoList = data.videos || [];
+        const tree = data.tree || [];
+        videoList = flattenTree(tree);
         listStatusEl.textContent = '';
         listStatusEl.className = '';
 
-        videoListEl.innerHTML = videoList.map((rel, i) => {
-          const name = rel.split(/[/\\]/).pop() || rel;
-          return `<li data-index="${i}">${escapeHtml(name)}</li>`;
-        }).join('');
+        videoTreeEl.innerHTML = renderTree(tree);
 
-        videoListEl.querySelectorAll('li').forEach(li => {
-          li.addEventListener('click', () => {
-            const rel = videoList[parseInt(li.dataset.index, 10)];
-            if (rel) playVideo(rel);
-          });
+        videoTreeEl.querySelectorAll('.tree-folder').forEach(el => {
+          if (el.nextElementSibling?.tagName === 'UL') {
+            el.addEventListener('click', () => el.classList.toggle('collapsed'));
+          }
+        });
+        videoTreeEl.querySelectorAll('.tree-file').forEach(el => {
+          el.addEventListener('click', () => playVideo(el.dataset.path));
         });
 
         const saved = getSavedState();
