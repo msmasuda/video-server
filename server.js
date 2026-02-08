@@ -37,7 +37,7 @@ function buildTree(dir, baseDir = dir) {
   }
   return nodes.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-    return (a.name || '').localeCompare(b.name || '', undefined, { numeric: true });
+    return (a.name || '').localeCompare(b.name || '', 'ja', { numeric: true });
   });
 }
 
