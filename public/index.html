@@ -223,7 +223,8 @@
       for (const n of nodes) {
         if (n.type === 'folder') {
           const hasChildren = n.children && n.children.length > 0;
-          html += `<div class="tree-folder" ${hasChildren ? '' : 'style="opacity:.7"'}>`;
+          const collapsedClass = hasChildren ? ' collapsed' : '';
+          html += `<div class="tree-folder${collapsedClass}" ${hasChildren ? '' : 'style="opacity:.7"'}>`;
           html += hasChildren ? '<span class="arrow">▼</span>' : '<span class="arrow">・</span>';
           html += escapeHtml(n.name) + '</div>';
           if (hasChildren) {
