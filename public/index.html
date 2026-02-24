@@ -141,6 +141,26 @@
         color: #f87171;
         padding: 1rem;
       }
+      .player-wrap.large {
+        max-width: 1920px;
+      }
+      .controls {
+        margin-top: 1rem;
+        display: flex;
+        gap: 1rem;
+      }
+      .btn {
+        background: var(--surface);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
     </style>
   </head>
   <body>
@@ -161,6 +181,9 @@
             crossorigin="anonymous"
           ></video>
         </div>
+        <div class="controls" id="videoControls" style="display: none">
+          <button class="btn" id="sizeToggle">サイズ2倍</button>
+        </div>
         <p class="empty" id="emptyMsg">左の一覧から動画を選んでください</p>
       </main>
     </div>
@@ -172,6 +195,8 @@
       const videoTreeEl = document.getElementById('videoTree');
       const listStatusEl = document.getElementById('listStatus');
       const playerWrap = document.getElementById('playerWrap');
+      const videoControls = document.getElementById('videoControls');
+      const sizeToggle = document.getElementById('sizeToggle');
       const emptyMsg = document.getElementById('emptyMsg');
       const video = document.getElementById('video');
       const resizer = document.getElementById('resizer');
@@ -181,6 +206,7 @@
 
       function showPlayer(show) {
         playerWrap.style.display = show ? 'block' : 'none';
+        videoControls.style.display = show ? 'flex' : 'none';
         emptyMsg.style.display = show ? 'none' : 'block';
       }
 
@@ -235,6 +261,12 @@
         const el = videoTreeEl.querySelector('.tree-file.active');
         const rel = el ? el.dataset.path : null;
         if (rel) saveState(rel, 0);
+      });
+
+      sizeToggle.addEventListener('click', () => {
+        playerWrap.classList.toggle('large');
+        const isLarge = playerWrap.classList.contains('large');
+        sizeToggle.textContent = isLarge ? 'サイズ標準' : 'サイズ2倍';
       });
 
       function flattenTree(nodes) {
