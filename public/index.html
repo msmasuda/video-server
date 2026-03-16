@@ -41,6 +41,9 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         font-weight: 600;
         font-size: 1.1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
       aside {
         overflow-y: auto;
@@ -165,7 +168,10 @@
   </head>
   <body>
     <div class="layout">
-      <header>動画サーバー</header>
+      <header>
+        <span>動画サーバー</span>
+        <button class="btn" id="selectFolderBtn">📂 フォルダを選択</button>
+      </header>
       <aside>
         <ul class="video-tree" id="videoTree"></ul>
         <p class="loading" id="listStatus">読み込み中…</p>
@@ -201,6 +207,7 @@
       const video = document.getElementById('video');
       const resizer = document.getElementById('resizer');
       const layout = document.querySelector('.layout');
+      const selectFolderBtn = document.getElementById('selectFolderBtn');
 
       let videoList = [];
 
@@ -371,6 +378,33 @@
           resizer.classList.remove('active');
           document.body.style.cursor = '';
           document.body.style.userSelect = '';
+        }
+      });
+
+      selectFolderBtn.addEventListener('click', async () => {
+        const originalText = selectFolderBtn.textContent;
+        selectFolderBtn.textContent = '選択中...';
+        selectFolderBtn.disabled = true;
+
+        try {
+          const res = await fetch('/api/select-folder', { method: 'POST' });
+          const data = await res.json();
+          
+          if (data.success) {
+            // 新しいフォルダが選択されたので動画一覧をリロード
+            loadVideos();
+            showPlayer(false); // プレイヤーを一旦隠す
+          } else if (data.canceled) {
+            // キャンセルされた場合は何もしない
+          } else {
+            alert('エラー: ' + (data.error || 'フォルダ選択に失敗しました'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('通信エラーが発生しました');
+        } finally {
+          selectFolderBtn.textContent = originalText;
+          selectFolderBtn.disabled = false;
         }
       });
 

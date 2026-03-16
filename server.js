@@ -1,12 +1,13 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { exec } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // 動画フォルダ（外付けHDDのパスを指定。例: /Volumes/MyDrive/Movies）
-const VIDEO_PATH = process.env.VIDEO_PATH || path.join(process.env.HOME || '', 'Movies');
+let VIDEO_PATH = process.env.VIDEO_PATH || path.join(process.env.HOME || '', 'Movies');
 
 if (!fs.existsSync(VIDEO_PATH)) {
   console.warn(`警告: VIDEO_PATH が存在しません: ${VIDEO_PATH}`);
@@ -57,6 +58,36 @@ function resolveVideoPath(relativePath) {
 app.get('/api/videos', (req, res) => {
   const tree = buildTree(VIDEO_PATH);
   res.json({ basePath: VIDEO_PATH, tree });
+});
+
+// OSのフォルダ選択ダイアログを呼び出すAPI (Mac専用)
+app.post('/api/select-folder', (req, res) => {
+  // AppleScriptを使ってFinderの「フォルダを選択」ダイアログを表示
+  // activate で前面に出し、POSIX path を取得する
+  const script = `osascript -e 'tell application "System Events"
+    activate
+    return POSIX path of (choose folder with prompt "動画フォルダを選択してください")
+  end tell'`;
+
+  exec(script, (error, stdout, stderr) => {
+    if (error) {
+      // ユーザーがキャンセルした場合 (error code 1)
+      if (error.code === 1) {
+        return res.json({ canceled: true });
+      }
+      console.error('Folder selection error:', error);
+      return res.status(500).json({ error: 'フォルダ選択に失敗しました' });
+    }
+
+    // 両端の空白や改行をトリム
+    const selectedPath = stdout.trim();
+    if (selectedPath && fs.existsSync(selectedPath)) {
+      VIDEO_PATH = selectedPath; // 参照するフォルダを更新
+      res.json({ success: true, path: selectedPath });
+    } else {
+      res.status(400).json({ error: '無効なパスが選択されました' });
+    }
+  });
 });
 
 // 動画ストリーミング（Range 対応でシーク可能）
