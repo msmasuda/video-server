@@ -24,6 +24,9 @@ function buildTree(dir, baseDir = dir) {
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
     for (const ent of entries) {
+      // 隠しファイル・フォルダ（Macの .DocumentRevisions-V100 など）を除外
+      if (ent.name.startsWith('.')) continue;
+
       const full = path.join(dir, ent.name);
       const relative = path.relative(baseDir, full);
       if (ent.isDirectory()) {
@@ -34,7 +37,10 @@ function buildTree(dir, baseDir = dir) {
       }
     }
   } catch (err) {
-    console.error('readdir error:', dir, err.message);
+    // 権限エラー (EPERM, EACCES) の場合はログ出力を抑える
+    if (err.code !== 'EPERM' && err.code !== 'EACCES') {
+      console.error('readdir error:', dir, err.message);
+    }
   }
   return nodes.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
