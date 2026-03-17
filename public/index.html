@@ -188,6 +188,10 @@
           ></video>
         </div>
         <div class="controls" id="videoControls" style="display: none">
+          <button class="btn" id="rewind30Btn">⏪ 60秒</button>
+          <button class="btn" id="rewind10Btn">⏪ 30秒</button>
+          <button class="btn" id="forward10Btn">30秒 ⏩</button>
+          <button class="btn" id="forward30Btn">60秒 ⏩</button>
           <button class="btn" id="sizeToggle">サイズ2倍</button>
         </div>
         <p class="empty" id="emptyMsg">左の一覧から動画を選んでください</p>
@@ -202,6 +206,10 @@
       const listStatusEl = document.getElementById('listStatus');
       const playerWrap = document.getElementById('playerWrap');
       const videoControls = document.getElementById('videoControls');
+      const rewind30Btn = document.getElementById('rewind30Btn');
+      const rewind10Btn = document.getElementById('rewind10Btn');
+      const forward10Btn = document.getElementById('forward10Btn');
+      const forward30Btn = document.getElementById('forward30Btn');
       const sizeToggle = document.getElementById('sizeToggle');
       const emptyMsg = document.getElementById('emptyMsg');
       const video = document.getElementById('video');
@@ -274,6 +282,19 @@
         playerWrap.classList.toggle('large');
         const isLarge = playerWrap.classList.contains('large');
         sizeToggle.textContent = isLarge ? 'サイズ標準' : 'サイズ2倍';
+      });
+
+      rewind30Btn.addEventListener('click', () => {
+        video.currentTime = Math.max(0, video.currentTime - 60);
+      });
+      rewind10Btn.addEventListener('click', () => {
+        video.currentTime = Math.max(0, video.currentTime - 30);
+      });
+      forward10Btn.addEventListener('click', () => {
+        video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 30);
+      });
+      forward30Btn.addEventListener('click', () => {
+        video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 60);
       });
 
       function flattenTree(nodes) {
