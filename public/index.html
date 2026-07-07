@@ -164,6 +164,34 @@
       .btn:hover {
         background: rgba(255, 255, 255, 0.15);
       }
+      #favSection {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding-bottom: 0.5rem;
+        margin-bottom: 0.25rem;
+      }
+      .fav-header {
+        padding: 0.5rem 0.75rem 0.25rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+      }
+      .fav-item {
+        padding: 0.35rem 0.5rem 0.35rem 1.25rem;
+        cursor: pointer;
+        border-radius: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 0.9rem;
+        color: var(--accent);
+      }
+      .fav-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .fav-item.active {
+        background: rgba(124, 156, 255, 0.2);
+      }
     </style>
   </head>
   <body>
@@ -173,6 +201,10 @@
         <button class="btn" id="selectFolderBtn">📂 フォルダを選択</button>
       </header>
       <aside>
+        <div id="favSection" style="display:none">
+          <div class="fav-header">★ お気に入り</div>
+          <ul id="favList" class="video-tree"></ul>
+        </div>
         <ul class="video-tree" id="videoTree"></ul>
         <p class="loading" id="listStatus">読み込み中…</p>
       </aside>
@@ -192,6 +224,7 @@
           <button class="btn" id="rewind10Btn">⏪ 30秒</button>
           <button class="btn" id="forward10Btn">30秒 ⏩</button>
           <button class="btn" id="forward30Btn">60秒 ⏩</button>
+          <button class="btn" id="favBtn">☆ お気に入り</button>
           <button class="btn" id="sizeToggle">サイズ2倍</button>
         </div>
         <p class="empty" id="emptyMsg">左の一覧から動画を選んでください</p>
@@ -238,6 +271,9 @@
       const resizer = document.getElementById('resizer');
       const layout = document.querySelector('.layout');
       const selectFolderBtn = document.getElementById('selectFolderBtn');
+      const favBtn = document.getElementById('favBtn');
+      const favSection = document.getElementById('favSection');
+      const favList = document.getElementById('favList');
 
       let videoList = [];
 
