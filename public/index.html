@@ -201,6 +201,28 @@
     <script>
       const VIDEO_KEY = 'video-server-current';
       const TIME_KEY = 'video-server-time';
+      const FAVORITES_KEY = 'video-server-favorites';
+
+      function getFavorites() {
+        try {
+          return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+        } catch (e) { return []; }
+      }
+
+      function saveFavorites(arr) {
+        try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(arr)); } catch (e) {}
+      }
+
+      function isFavorite(path) {
+        return getFavorites().includes(path);
+      }
+
+      function toggleFavorite(path) {
+        const favs = getFavorites();
+        const idx = favs.indexOf(path);
+        if (idx === -1) { favs.push(path); } else { favs.splice(idx, 1); }
+        saveFavorites(favs);
+      }
 
       const videoTreeEl = document.getElementById('videoTree');
       const listStatusEl = document.getElementById('listStatus');
