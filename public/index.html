@@ -353,9 +353,7 @@
         if (!currentPath) return;
         toggleFavorite(currentPath);
         updateFavBtn(currentPath);
-        videoTreeEl.innerHTML = renderTree(lastTree);
-        rebindTree();
-        setActiveItem(currentPath);
+        refreshTreeStars();
         renderFavSection();
       });
 
@@ -399,7 +397,7 @@
               html += '<ul>' + renderTree(n.children) + '</ul>';
             }
           } else {
-            const star = isFavorite(n.path) ? '<span style="color:var(--accent)">★ </span>' : '';
+            const star = isFavorite(n.path) ? '<span data-star style="color:var(--accent)">★ </span>' : '';
             html += `<li class="tree-file" data-path="${escapeAttr(n.path)}">${star}${escapeHtml(n.name)}</li>`;
           }
         }
@@ -434,6 +432,20 @@
 
       function updateFavBtn(path) {
         favBtn.textContent = isFavorite(path) ? '★ お気に入り済み' : '☆ お気に入り';
+      }
+
+      function refreshTreeStars() {
+        videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
+          const existing = el.querySelector('span[data-star]');
+          if (existing) existing.remove();
+          if (isFavorite(el.dataset.path)) {
+            const star = document.createElement('span');
+            star.dataset.star = '';
+            star.style.color = 'var(--accent)';
+            star.textContent = '★ ';
+            el.prepend(star);
+          }
+        });
       }
 
       function escapeAttr(s) {
