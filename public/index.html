@@ -276,6 +276,8 @@
       const favList = document.getElementById('favList');
 
       let videoList = [];
+      let currentPath = null;
+      let lastTree = [];
 
       function showPlayer(show) {
         playerWrap.style.display = show ? 'block' : 'none';
@@ -287,9 +289,13 @@
         videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
           el.classList.toggle('active', el.dataset.path === relativePath);
         });
+        favList.querySelectorAll('.fav-item').forEach((el) => {
+          el.classList.toggle('active', el.dataset.path === relativePath);
+        });
       }
 
       function playVideo(relativePath) {
+        currentPath = relativePath;
         const url = '/video?path=' + encodeURIComponent(relativePath);
         video.src = url;
         video.load();
@@ -382,10 +388,37 @@
               html += '<ul>' + renderTree(n.children) + '</ul>';
             }
           } else {
-            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}">${escapeHtml(n.name)}</li>`;
+            const star = isFavorite(n.path) ? '<span style="color:var(--accent)">★ </span>' : '';
+            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}">${star}${escapeHtml(n.name)}</li>`;
           }
         }
         return html;
+      }
+
+      function rebindTree() {
+        videoTreeEl.querySelectorAll('.tree-folder').forEach((el) => {
+          if (el.nextElementSibling?.tagName === 'UL') {
+            el.addEventListener('click', () => el.classList.toggle('collapsed'));
+          }
+        });
+        videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
+          el.addEventListener('click', () => playVideo(el.dataset.path));
+        });
+      }
+
+      function renderFavSection() {
+        const favs = getFavorites().filter((p) => videoList.includes(p));
+        favSection.style.display = favs.length === 0 ? 'none' : 'block';
+        favList.innerHTML = favs
+          .map((p) => {
+            const name = p.split('/').pop();
+            return `<li class="fav-item" data-path="${escapeAttr(p)}">${escapeHtml(name)}</li>`;
+          })
+          .join('');
+        favList.querySelectorAll('.fav-item').forEach((el) => {
+          el.addEventListener('click', () => playVideo(el.dataset.path));
+        });
+        setActiveItem(currentPath);
       }
 
       function escapeAttr(s) {
@@ -400,22 +433,14 @@
           if (!res.ok) throw new Error(res.statusText);
           const data = await res.json();
           const tree = data.tree || [];
+          lastTree = tree;
           videoList = flattenTree(tree);
           listStatusEl.textContent = '';
           listStatusEl.className = '';
 
           videoTreeEl.innerHTML = renderTree(tree);
-
-          videoTreeEl.querySelectorAll('.tree-folder').forEach((el) => {
-            if (el.nextElementSibling?.tagName === 'UL') {
-              el.addEventListener('click', () =>
-                el.classList.toggle('collapsed'),
-              );
-            }
-          });
-          videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
-            el.addEventListener('click', () => playVideo(el.dataset.path));
-          });
+          rebindTree();
+          renderFavSection();
 
           const saved = getSavedState();
           if (saved && videoList.includes(saved.path)) {
