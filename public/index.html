@@ -309,6 +309,7 @@
 
         video.play().catch(() => {});
         showPlayer(true);
+        updateFavBtn(relativePath);
         setActiveItem(relativePath);
         saveState(relativePath, video.currentTime);
       }
@@ -346,6 +347,16 @@
         playerWrap.classList.toggle('large');
         const isLarge = playerWrap.classList.contains('large');
         sizeToggle.textContent = isLarge ? 'サイズ標準' : 'サイズ2倍';
+      });
+
+      favBtn.addEventListener('click', () => {
+        if (!currentPath) return;
+        toggleFavorite(currentPath);
+        updateFavBtn(currentPath);
+        videoTreeEl.innerHTML = renderTree(lastTree);
+        rebindTree();
+        setActiveItem(currentPath);
+        renderFavSection();
       });
 
       rewind30Btn.addEventListener('click', () => {
@@ -419,6 +430,10 @@
           el.addEventListener('click', () => playVideo(el.dataset.path));
         });
         setActiveItem(currentPath);
+      }
+
+      function updateFavBtn(path) {
+        favBtn.textContent = isFavorite(path) ? '★ お気に入り済み' : '☆ お気に入り';
       }
 
       function escapeAttr(s) {
