@@ -2,9 +2,12 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
+const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
 
 // 動画フォルダ（外付けHDDのパスを指定。例: /Volumes/MyDrive/Movies）
 let VIDEO_PATH = process.env.VIDEO_PATH || path.join(process.env.HOME || '', 'Movies');
@@ -96,6 +99,47 @@ app.post('/api/select-folder', (req, res) => {
   });
 });
 
+// お気に入り一覧 API
+app.get('/api/favorites', (req, res) => {
+  res.json({ favorites: db.getFavorites() });
+});
+
+// お気に入りトグル API
+app.post('/api/favorites/toggle', (req, res) => {
+  const { path: videoPath } = req.body || {};
+  if (!videoPath || typeof videoPath !== 'string') {
+    return res.status(400).json({ error: 'path is required' });
+  }
+  const isFav = db.toggleFavorite(videoPath);
+  res.json({ isFavorite: isFav, favorites: db.getFavorites() });
+});
+
+// お気に入り一括同期 API（localStorage からの移行用）
+app.post('/api/favorites/sync', (req, res) => {
+  const { paths } = req.body || {};
+  if (Array.isArray(paths)) {
+    db.addFavorites(paths);
+  }
+  res.json({ success: true, favorites: db.getFavorites() });
+});
+
+// 再生状態取得 API（path 指定時はその動画、未指定時は直近に再生した動画）
+app.get('/api/playback', (req, res) => {
+  const videoPath = req.query.path;
+  const playback = db.getPlayback(typeof videoPath === 'string' ? videoPath : undefined);
+  res.json({ playback });
+});
+
+// 再生状態保存 API
+app.post('/api/playback', (req, res) => {
+  const { path: videoPath, time } = req.body || {};
+  if (!videoPath || typeof videoPath !== 'string' || typeof time !== 'number') {
+    return res.status(400).json({ error: 'path and numeric time are required' });
+  }
+  db.savePlayback(videoPath, time);
+  res.json({ success: true });
+});
+
 // 動画ストリーミング（Range 対応でシーク可能）
 app.get('/video', (req, res) => {
   const relativePath = req.query.path;
@@ -140,7 +184,11 @@ app.get('/video', (req, res) => {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.listen(PORT, () => {
-  console.log(`動画サーバー: http://localhost:${PORT}`);
-  console.log(`動画フォルダ: ${VIDEO_PATH}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`動画サーバー: http://localhost:${PORT}`);
+    console.log(`動画フォルダ: ${VIDEO_PATH}`);
+  });
+}
+
+module.exports = app;

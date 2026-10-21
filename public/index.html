@@ -269,25 +269,75 @@
       const TIME_KEY = 'video-server-time';
       const FAVORITES_KEY = 'video-server-favorites';
 
-      function getFavorites() {
+      let favorites = [];
+      const playbackCache = {}; // path -> time
+      let saveTimer = null;
+      let pendingSave = null;
+
+      // お気に入り初期化＆マイグレーション
+      async function loadFavorites() {
         try {
-          return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-        } catch (e) { return []; }
+          // localStorage に過去データがあれば SQLite に自動同期（マイグレーション）
+          let localFavs = [];
+          try {
+            localFavs = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+          } catch (e) {}
+
+          if (localFavs.length > 0) {
+            await fetch('/api/favorites/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paths: localFavs }),
+            }).catch(() => {});
+            localStorage.removeItem(FAVORITES_KEY);
+          }
+
+          const res = await fetch('/api/favorites');
+          if (res.ok) {
+            const data = await res.json();
+            favorites = data.favorites || [];
+          }
+        } catch (e) {
+          console.error('お気に入りの読み込みに失敗しました:', e);
+        }
       }
 
-      function saveFavorites(arr) {
-        try { localStorage.setItem(FAVORITES_KEY, JSON.stringify(arr)); } catch (e) {}
+      function getFavorites() {
+        return favorites;
       }
 
       function isFavorite(path) {
-        return getFavorites().includes(path);
+        return favorites.includes(path);
       }
 
-      function toggleFavorite(path) {
-        const favs = getFavorites();
-        const idx = favs.indexOf(path);
-        if (idx === -1) { favs.push(path); } else { favs.splice(idx, 1); }
-        saveFavorites(favs);
+      async function toggleFavorite(path) {
+        // 楽観的更新
+        const idx = favorites.indexOf(path);
+        if (idx === -1) {
+          favorites.push(path);
+        } else {
+          favorites.splice(idx, 1);
+        }
+        updateFavBtn(path);
+        refreshTreeStars();
+        renderFavSection();
+
+        try {
+          const res = await fetch('/api/favorites/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            favorites = data.favorites || [];
+            updateFavBtn(path);
+            refreshTreeStars();
+            renderFavSection();
+          }
+        } catch (e) {
+          console.error('お気に入りの保存に失敗しました:', e);
+        }
       }
 
       const videoTreeEl = document.getElementById('videoTree');
@@ -328,27 +378,10 @@
         });
       }
 
-      function playVideo(relativePath) {
-        currentPath = relativePath;
-        const url = '/video?path=' + encodeURIComponent(relativePath);
-        video.src = url;
-        video.load();
-
-        const saved = getSavedState();
-        if (saved && saved.path === relativePath && saved.time > 0) {
-          video.currentTime = saved.time;
-        } else {
-          video.currentTime = 0;
-        }
-
-        video.play().catch(() => {});
-        showPlayer(true);
-        updateFavBtn(relativePath);
-        setActiveItem(relativePath);
-        saveState(relativePath, video.currentTime);
-      }
-
       function getSavedState() {
+        if (currentPath && playbackCache[currentPath] !== undefined) {
+          return { path: currentPath, time: playbackCache[currentPath] };
+        }
         try {
           const raw = localStorage.getItem(VIDEO_KEY);
           const time = localStorage.getItem(TIME_KEY);
@@ -359,22 +392,103 @@
       }
 
       function saveState(path, time) {
+        if (!path) return;
+        const safeTime = Math.max(0, typeof time === 'number' && !isNaN(time) ? time : 0);
+        playbackCache[path] = safeTime;
+
         try {
           localStorage.setItem(VIDEO_KEY, path);
-          localStorage.setItem(TIME_KEY, String(time >= 0 ? time : 0));
+          localStorage.setItem(TIME_KEY, String(safeTime));
         } catch (e) {}
+
+        pendingSave = { path, time: safeTime };
+        if (!saveTimer) {
+          saveTimer = setTimeout(() => {
+            flushSaveState();
+          }, 2000);
+        }
+      }
+
+      function flushSaveState() {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        if (!pendingSave) return;
+        const payload = pendingSave;
+        pendingSave = null;
+
+        fetch('/api/playback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch(() => {});
+      }
+
+      async function playVideo(relativePath, resumeTime = null) {
+        flushSaveState();
+        currentPath = relativePath;
+        const url = '/video?path=' + encodeURIComponent(relativePath);
+        video.src = url;
+        video.load();
+
+        let initialTime = 0;
+        if (resumeTime !== null && resumeTime >= 0) {
+          initialTime = resumeTime;
+        } else if (playbackCache[relativePath] !== undefined) {
+          initialTime = playbackCache[relativePath];
+        } else {
+          try {
+            const res = await fetch('/api/playback?path=' + encodeURIComponent(relativePath));
+            if (res.ok) {
+              const data = await res.json();
+              if (data.playback && typeof data.playback.time === 'number' && data.playback.time > 0) {
+                initialTime = data.playback.time;
+              }
+            }
+          } catch (e) {}
+        }
+
+        playbackCache[relativePath] = initialTime;
+        if (initialTime > 0) {
+          video.currentTime = initialTime;
+        } else {
+          video.currentTime = 0;
+        }
+
+        video.play().catch(() => {});
+        showPlayer(true);
+        updateFavBtn(relativePath);
+        setActiveItem(relativePath);
+        saveState(relativePath, initialTime);
       }
 
       video.addEventListener('timeupdate', () => {
-        const el = videoTreeEl.querySelector('.tree-file.active');
-        const rel = el ? el.dataset.path : null;
-        if (rel) saveState(rel, video.currentTime);
+        if (currentPath) {
+          saveState(currentPath, video.currentTime);
+        }
+      });
+
+      video.addEventListener('pause', () => {
+        if (currentPath) {
+          saveState(currentPath, video.currentTime);
+          flushSaveState();
+        }
       });
 
       video.addEventListener('ended', () => {
-        const el = videoTreeEl.querySelector('.tree-file.active');
-        const rel = el ? el.dataset.path : null;
-        if (rel) saveState(rel, 0);
+        if (currentPath) {
+          saveState(currentPath, 0);
+          flushSaveState();
+        }
+      });
+
+      window.addEventListener('beforeunload', () => {
+        if (currentPath && video.currentTime > 0) {
+          pendingSave = { path: currentPath, time: video.currentTime };
+        }
+        flushSaveState();
       });
 
       sizeToggle.addEventListener('click', () => {
@@ -390,9 +504,6 @@
       favBtn.addEventListener('click', () => {
         if (!currentPath) return;
         toggleFavorite(currentPath);
-        updateFavBtn(currentPath);
-        refreshTreeStars();
-        renderFavSection();
       });
 
       rewind30Btn.addEventListener('click', () => {
@@ -448,6 +559,10 @@
         if (currentPath === path && video.currentTime > 0) {
           time = Math.floor(video.currentTime);
           video.pause();
+          saveState(path, time);
+          flushSaveState();
+        } else if (playbackCache[path] > 0) {
+          time = Math.floor(playbackCache[path]);
         } else {
           const saved = getSavedState();
           if (saved && saved.path === path && saved.time > 0) {
@@ -532,9 +647,12 @@
 
       async function loadVideos() {
         try {
-          const res = await fetch('/api/videos');
-          if (!res.ok) throw new Error(res.statusText);
-          const data = await res.json();
+          const [videosRes] = await Promise.all([
+            fetch('/api/videos'),
+            loadFavorites(),
+          ]);
+          if (!videosRes.ok) throw new Error(videosRes.statusText);
+          const data = await videosRes.json();
           const tree = data.tree || [];
           lastTree = tree;
           videoList = flattenTree(tree);
@@ -545,9 +663,36 @@
           rebindTree();
           renderFavSection();
 
-          const saved = getSavedState();
-          if (saved && videoList.includes(saved.path)) {
-            playVideo(saved.path);
+          // 直近の再生状態を取得（SQLite）
+          let resumeTarget = null;
+          try {
+            const pbRes = await fetch('/api/playback');
+            if (pbRes.ok) {
+              const pbData = await pbRes.json();
+              if (pbData.playback && pbData.playback.path) {
+                resumeTarget = pbData.playback;
+              }
+            }
+          } catch (e) {}
+
+          // SQLite にない場合、localStorage からのマイグレーション
+          if (!resumeTarget) {
+            try {
+              const raw = localStorage.getItem(VIDEO_KEY);
+              const time = localStorage.getItem(TIME_KEY);
+              if (raw) {
+                resumeTarget = { path: raw, time: parseFloat(time) || 0 };
+                fetch('/api/playback', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(resumeTarget),
+                }).catch(() => {});
+              }
+            } catch (e) {}
+          }
+
+          if (resumeTarget && videoList.includes(resumeTarget.path)) {
+            playVideo(resumeTarget.path, resumeTarget.time);
           }
         } catch (err) {
           listStatusEl.textContent = '一覧の取得に失敗しました: ' + err.message;

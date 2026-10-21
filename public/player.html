@@ -116,6 +116,9 @@
       const forward10Btn = document.getElementById('forward10Btn');
       const forward30Btn = document.getElementById('forward30Btn');
 
+      let saveTimer = null;
+      let pendingSave = null;
+
       function getSavedTime(path) {
         try {
           const raw = localStorage.getItem(VIDEO_KEY);
@@ -128,30 +131,71 @@
       }
 
       function saveState(path, time) {
+        if (!path) return;
+        const safeTime = Math.max(0, typeof time === 'number' && !isNaN(time) ? time : 0);
         try {
           localStorage.setItem(VIDEO_KEY, path);
-          localStorage.setItem(TIME_KEY, String(time >= 0 ? time : 0));
+          localStorage.setItem(TIME_KEY, String(safeTime));
         } catch (e) {}
+
+        pendingSave = { path, time: safeTime };
+        if (!saveTimer) {
+          saveTimer = setTimeout(() => {
+            flushSaveState();
+          }, 2000);
+        }
       }
 
-      if (!relativePath) {
-        videoContainer.style.display = 'none';
-        bottomBar.style.display = 'none';
-        errorMsg.style.display = 'block';
-        errorMsg.textContent = '動画が指定されていません。一覧画面から動画を選択してください。';
-      } else {
+      function flushSaveState() {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        if (!pendingSave) return;
+        const payload = pendingSave;
+        pendingSave = null;
+
+        fetch('/api/playback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch(() => {});
+      }
+
+      async function initPlayer() {
+        if (!relativePath) {
+          videoContainer.style.display = 'none';
+          bottomBar.style.display = 'none';
+          errorMsg.style.display = 'block';
+          errorMsg.textContent = '動画が指定されていません。一覧画面から動画を選択してください。';
+          return;
+        }
+
         const filename = relativePath.split('/').pop();
         document.title = filename;
 
         const videoUrl = '/video?path=' + encodeURIComponent(relativePath);
         video.src = videoUrl;
 
-        // レジューム位置の計算（クエリパラメータ t があれば優先、なければ localStorage）
+        // レジューム位置の計算（クエリパラメータ t があれば最優先、なければ SQLite / localStorage）
         let initialTime = 0;
         if (paramTime !== null && !isNaN(paramTime) && paramTime >= 0) {
           initialTime = paramTime;
         } else {
-          initialTime = getSavedTime(relativePath);
+          try {
+            const res = await fetch('/api/playback?path=' + encodeURIComponent(relativePath));
+            if (res.ok) {
+              const data = await res.json();
+              if (data.playback && typeof data.playback.time === 'number' && data.playback.time > 0) {
+                initialTime = data.playback.time;
+              }
+            }
+          } catch (e) {}
+
+          if (initialTime === 0) {
+            initialTime = getSavedTime(relativePath);
+          }
         }
 
         video.addEventListener(
@@ -171,8 +215,21 @@
           saveState(relativePath, video.currentTime);
         });
 
+        video.addEventListener('pause', () => {
+          saveState(relativePath, video.currentTime);
+          flushSaveState();
+        });
+
         video.addEventListener('ended', () => {
           saveState(relativePath, 0);
+          flushSaveState();
+        });
+
+        window.addEventListener('beforeunload', () => {
+          if (video.currentTime > 0) {
+            pendingSave = { path: relativePath, time: video.currentTime };
+          }
+          flushSaveState();
         });
 
         rewind30Btn.addEventListener('click', () => {
@@ -188,6 +245,8 @@
           video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 60);
         });
       }
+
+      initPlayer();
     </script>
   </body>
 </html>
