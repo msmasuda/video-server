@@ -111,6 +111,35 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tree-file .file-label,
+      .fav-item .file-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+      .open-tab-icon {
+        opacity: 0;
+        margin-left: 0.5rem;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--muted);
+        transition: opacity 0.15s, color 0.15s, background 0.15s;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tree-file:hover .open-tab-icon,
+      .fav-item:hover .open-tab-icon {
+        opacity: 1;
+      }
+      .open-tab-icon:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--text);
       }
       .video-tree .tree-file:hover {
         background: rgba(255, 255, 255, 0.08);
@@ -185,6 +214,9 @@
         text-overflow: ellipsis;
         font-size: 0.9rem;
         color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
       }
       .fav-item:hover {
         background: rgba(255, 255, 255, 0.08);
@@ -226,6 +258,7 @@
           <button class="btn" id="forward30Btn">60秒 ⏩</button>
           <button class="btn" id="favBtn">☆ お気に入り</button>
           <button class="btn" id="sizeToggle">サイズ2倍</button>
+          <button class="btn" id="openNewTabBtn" title="別タブで開く">↗ 別タブで開く</button>
         </div>
         <p class="empty" id="emptyMsg">左の一覧から動画を選んでください</p>
       </main>
@@ -266,6 +299,7 @@
       const forward10Btn = document.getElementById('forward10Btn');
       const forward30Btn = document.getElementById('forward30Btn');
       const sizeToggle = document.getElementById('sizeToggle');
+      const openNewTabBtn = document.getElementById('openNewTabBtn');
       const emptyMsg = document.getElementById('emptyMsg');
       const video = document.getElementById('video');
       const resizer = document.getElementById('resizer');
@@ -349,6 +383,10 @@
         sizeToggle.textContent = isLarge ? 'サイズ標準' : 'サイズ2倍';
       });
 
+      openNewTabBtn.addEventListener('click', () => {
+        openInNewTab(currentPath);
+      });
+
       favBtn.addEventListener('click', () => {
         if (!currentPath) return;
         toggleFavorite(currentPath);
@@ -398,10 +436,27 @@
             }
           } else {
             const star = isFavorite(n.path) ? '<span data-star style="color:var(--accent)">★ </span>' : '';
-            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}">${star}${escapeHtml(n.name)}</li>`;
+            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}"><span class="file-label">${star}${escapeHtml(n.name)}</span><span class="open-tab-icon" title="別タブで開く">↗</span></li>`;
           }
         }
         return html;
+      }
+
+      function openInNewTab(path) {
+        if (!path) return;
+        let time = 0;
+        if (currentPath === path && video.currentTime > 0) {
+          time = Math.floor(video.currentTime);
+          video.pause();
+        } else {
+          const saved = getSavedState();
+          if (saved && saved.path === path && saved.time > 0) {
+            time = Math.floor(saved.time);
+          }
+        }
+        const tParam = time > 0 ? `&t=${time}` : '';
+        const win = window.open(`/player.html?path=${encodeURIComponent(path)}${tParam}`, 'videoPlayer');
+        if (win) win.focus();
       }
 
       function rebindTree() {
@@ -411,7 +466,17 @@
           }
         });
         videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
-          el.addEventListener('click', () => playVideo(el.dataset.path));
+          el.addEventListener('click', (e) => {
+            if (e.target.closest('.open-tab-icon')) return;
+            playVideo(el.dataset.path);
+          });
+        });
+        videoTreeEl.querySelectorAll('.open-tab-icon').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const path = el.closest('.tree-file')?.dataset.path;
+            openInNewTab(path);
+          });
         });
       }
 
@@ -421,11 +486,21 @@
         favList.innerHTML = favs
           .map((p) => {
             const name = p.split('/').pop();
-            return `<li class="fav-item" data-path="${escapeAttr(p)}">${escapeHtml(name)}</li>`;
+            return `<li class="fav-item" data-path="${escapeAttr(p)}"><span class="file-label">${escapeHtml(name)}</span><span class="open-tab-icon" title="別タブで開く">↗</span></li>`;
           })
           .join('');
         favList.querySelectorAll('.fav-item').forEach((el) => {
-          el.addEventListener('click', () => playVideo(el.dataset.path));
+          el.addEventListener('click', (e) => {
+            if (e.target.closest('.open-tab-icon')) return;
+            playVideo(el.dataset.path);
+          });
+        });
+        favList.querySelectorAll('.open-tab-icon').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const path = el.closest('.fav-item')?.dataset.path;
+            openInNewTab(path);
+          });
         });
         setActiveItem(currentPath);
       }
@@ -436,14 +511,15 @@
 
       function refreshTreeStars() {
         videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
-          const existing = el.querySelector('span[data-star]');
+          const label = el.querySelector('.file-label') || el;
+          const existing = label.querySelector('span[data-star]');
           if (existing) existing.remove();
           if (isFavorite(el.dataset.path)) {
             const star = document.createElement('span');
             star.dataset.star = '';
             star.style.color = 'var(--accent)';
             star.textContent = '★ ';
-            el.prepend(star);
+            label.prepend(star);
           }
         });
       }
