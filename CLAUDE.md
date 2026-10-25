@@ -39,7 +39,7 @@ This is a minimal Node.js app: `server.js` (Express backend), `db.js` (SQLite pe
 - `express.static('public')` serves the frontend.
 
 **`public/index.html`** is a self-contained SPA:
-- Fetches `/api/videos` and `/api/favorites` on load, renders a collapsible folder tree in the sidebar and an upper favorites section.
+- Fetches `/api/videos` and `/api/favorites` on load, renders a collapsible folder tree in the sidebar.
 - Plays videos via `<video src="/video?path=…">` with Range requests handled natively by the browser.
 - Automatically saves playback position to SQLite via throttled `POST /api/playback` (and mirrors to `localStorage`), auto-resumes last played video on next load.
 - Migrates any legacy `localStorage` favorites/playback data to SQLite on first load.

@@ -115,8 +115,7 @@
         align-items: center;
         justify-content: space-between;
       }
-      .tree-file .file-label,
-      .fav-item .file-label {
+      .tree-file .file-label {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -133,8 +132,7 @@
         cursor: pointer;
         flex-shrink: 0;
       }
-      .tree-file:hover .open-tab-icon,
-      .fav-item:hover .open-tab-icon {
+      .tree-file:hover .open-tab-icon {
         opacity: 1;
       }
       .open-tab-icon:hover {
@@ -193,37 +191,7 @@
       .btn:hover {
         background: rgba(255, 255, 255, 0.15);
       }
-      #favSection {
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        padding-bottom: 0.5rem;
-        margin-bottom: 0.25rem;
-      }
-      .fav-header {
-        padding: 0.5rem 0.75rem 0.25rem;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--muted);
-      }
-      .fav-item {
-        padding: 0.35rem 0.5rem 0.35rem 1.25rem;
-        cursor: pointer;
-        border-radius: 6px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        font-size: 0.9rem;
-        color: var(--accent);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .fav-item:hover {
-        background: rgba(255, 255, 255, 0.08);
-      }
-      .fav-item.active {
-        background: rgba(124, 156, 255, 0.2);
-      }
+
     </style>
   </head>
   <body>
@@ -233,10 +201,6 @@
         <button class="btn" id="selectFolderBtn">📂 フォルダを選択</button>
       </header>
       <aside>
-        <div id="favSection" style="display:none">
-          <div class="fav-header">★ お気に入り</div>
-          <ul id="favList" class="video-tree"></ul>
-        </div>
         <ul class="video-tree" id="videoTree"></ul>
         <p class="loading" id="listStatus">読み込み中…</p>
       </aside>
@@ -302,10 +266,6 @@
         }
       }
 
-      function getFavorites() {
-        return favorites;
-      }
-
       function isFavorite(path) {
         return favorites.includes(path);
       }
@@ -320,7 +280,6 @@
         }
         updateFavBtn(path);
         refreshTreeStars();
-        renderFavSection();
 
         try {
           const res = await fetch('/api/favorites/toggle', {
@@ -333,7 +292,6 @@
             favorites = data.favorites || [];
             updateFavBtn(path);
             refreshTreeStars();
-            renderFavSection();
           }
         } catch (e) {
           console.error('お気に入りの保存に失敗しました:', e);
@@ -356,8 +314,6 @@
       const layout = document.querySelector('.layout');
       const selectFolderBtn = document.getElementById('selectFolderBtn');
       const favBtn = document.getElementById('favBtn');
-      const favSection = document.getElementById('favSection');
-      const favList = document.getElementById('favList');
 
       let videoList = [];
       let currentPath = null;
@@ -371,9 +327,6 @@
 
       function setActiveItem(relativePath) {
         videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
-          el.classList.toggle('active', el.dataset.path === relativePath);
-        });
-        favList.querySelectorAll('.fav-item').forEach((el) => {
           el.classList.toggle('active', el.dataset.path === relativePath);
         });
       }
@@ -595,31 +548,6 @@
         });
       }
 
-      function renderFavSection() {
-        const favs = getFavorites().filter((p) => videoList.includes(p));
-        favSection.style.display = favs.length === 0 ? 'none' : 'block';
-        favList.innerHTML = favs
-          .map((p) => {
-            const name = p.split('/').pop();
-            return `<li class="fav-item" data-path="${escapeAttr(p)}"><span class="file-label">${escapeHtml(name)}</span><span class="open-tab-icon" title="別タブで開く">↗</span></li>`;
-          })
-          .join('');
-        favList.querySelectorAll('.fav-item').forEach((el) => {
-          el.addEventListener('click', (e) => {
-            if (e.target.closest('.open-tab-icon')) return;
-            playVideo(el.dataset.path);
-          });
-        });
-        favList.querySelectorAll('.open-tab-icon').forEach((el) => {
-          el.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const path = el.closest('.fav-item')?.dataset.path;
-            openInNewTab(path);
-          });
-        });
-        setActiveItem(currentPath);
-      }
-
       function updateFavBtn(path) {
         favBtn.textContent = isFavorite(path) ? '★ お気に入り済み' : '☆ お気に入り';
       }
@@ -661,7 +589,6 @@
 
           videoTreeEl.innerHTML = renderTree(tree);
           rebindTree();
-          renderFavSection();
 
           // 直近の再生状態を取得（SQLite）
           let resumeTarget = null;
