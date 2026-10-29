@@ -504,17 +504,36 @@
         }
       }
 
+      function findFavoriteMatch(path) {
+        if (!path || typeof path !== 'string') return null;
+        if (favorites.includes(path)) return path;
+
+        // 先頭のフォルダ名（マウント名など）を除去して照合
+        const parts = path.split('/');
+        for (let i = 1; i < parts.length; i++) {
+          const sub = parts.slice(i).join('/');
+          if (favorites.includes(sub)) return sub;
+        }
+
+        // 逆パターン（favorites 内のパスの方が長い場合）
+        const match = favorites.find((fav) => fav.endsWith('/' + path));
+        if (match) return match;
+
+        return null;
+      }
+
       function isFavorite(path) {
-        return favorites.includes(path);
+        return findFavoriteMatch(path) !== null;
       }
 
       async function toggleFavorite(path) {
         // 楽観的更新
-        const idx = favorites.indexOf(path);
-        if (idx === -1) {
-          favorites.push(path);
+        const matched = findFavoriteMatch(path);
+        if (matched) {
+          const idx = favorites.indexOf(matched);
+          if (idx !== -1) favorites.splice(idx, 1);
         } else {
-          favorites.splice(idx, 1);
+          favorites.push(path);
         }
         updateFavBtn(path);
         refreshTreeStars();
@@ -870,8 +889,21 @@
             } catch (e) {}
           }
 
-          if (resumeTarget && videoList.includes(resumeTarget.path)) {
-            playVideo(resumeTarget.path, resumeTarget.time);
+          if (resumeTarget) {
+            let targetPath = null;
+            if (videoList.includes(resumeTarget.path)) {
+              targetPath = resumeTarget.path;
+            } else {
+              // 先頭フォルダの違いを吸収してマッチ
+              targetPath = videoList.find(
+                (v) =>
+                  v.endsWith('/' + resumeTarget.path) ||
+                  resumeTarget.path.endsWith('/' + v)
+              );
+            }
+            if (targetPath) {
+              playVideo(targetPath, resumeTarget.time);
+            }
           }
         } catch (err) {
           listStatusEl.textContent = '一覧の取得に失敗しました: ' + err.message;
