@@ -20,6 +20,29 @@ db.exec(`
   );
 `);
 
+// Unicode NFD (Mac 特有の濁点分離) を NFC (標準) へ自動正規化マイグレーション
+try {
+  const allFavs = db.prepare('SELECT path FROM favorites').all();
+  const updateFav = db.prepare('UPDATE OR REPLACE favorites SET path = ? WHERE path = ?');
+  for (const row of allFavs) {
+    const nfc = row.path.normalize('NFC');
+    if (nfc !== row.path) {
+      updateFav.run(nfc, row.path);
+    }
+  }
+
+  const allPlays = db.prepare('SELECT path FROM playback_state').all();
+  const updatePlay = db.prepare('UPDATE OR REPLACE playback_state SET path = ? WHERE path = ?');
+  for (const row of allPlays) {
+    const nfc = row.path.normalize('NFC');
+    if (nfc !== row.path) {
+      updatePlay.run(nfc, row.path);
+    }
+  }
+} catch (e) {
+  console.error('Unicode normalization migration error:', e);
+}
+
 let lastTimestamp = 0;
 function getNextTimestamp() {
   let now = Date.now();
@@ -58,20 +81,28 @@ function getFavorites() {
 /** 指定パス、または前方・後方一致でお気に入りの実際のキーを取得 */
 function findFavoriteKey(videoPath) {
   if (!videoPath || typeof videoPath !== 'string') return null;
-  // 1. 完全一致
-  if (stmts.isFavorite.get(videoPath)) return videoPath;
 
-  // 2. 先頭のフォルダ名（マウント名など）を除去して照合
-  // 例: HD-ADU3/MyVideo/foo.mp4 -> MyVideo/foo.mp4
-  const parts = videoPath.split('/');
-  for (let i = 1; i < parts.length; i++) {
-    const sub = parts.slice(i).join('/');
-    if (stmts.isFavorite.get(sub)) return sub;
+  const candidates = [videoPath];
+  const nfc = videoPath.normalize('NFC');
+  const nfd = videoPath.normalize('NFD');
+  if (nfc !== videoPath) candidates.push(nfc);
+  if (nfd !== videoPath && nfd !== nfc) candidates.push(nfd);
+
+  for (const cand of candidates) {
+    // 1. 完全一致
+    if (stmts.isFavorite.get(cand)) return cand;
+
+    // 2. 先頭のフォルダ名（マウント名など）を除去して照合
+    const parts = cand.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      const sub = parts.slice(i).join('/');
+      if (stmts.isFavorite.get(sub)) return sub;
+    }
+
+    // 3. 逆パターン（DB側が長いパスの場合）
+    const suffixRow = stmts.findFavoriteSuffix.get('%/' + cand);
+    if (suffixRow) return suffixRow.path;
   }
-
-  // 3. 逆パターン（DB側が長いパスの場合）
-  const suffixRow = stmts.findFavoriteSuffix.get('%/' + videoPath);
-  if (suffixRow) return suffixRow.path;
 
   return null;
 }
@@ -109,20 +140,28 @@ function addFavorites(paths) {
 /** 再生位置を取得（videoPath指定時はその動画、未指定時は直近に再生した動画） */
 function getPlayback(videoPath) {
   if (videoPath && typeof videoPath === 'string') {
-    let row = stmts.getPlaybackState.get(videoPath);
-    if (row) return row;
+    const candidates = [videoPath];
+    const nfc = videoPath.normalize('NFC');
+    const nfd = videoPath.normalize('NFD');
+    if (nfc !== videoPath) candidates.push(nfc);
+    if (nfd !== videoPath && nfd !== nfc) candidates.push(nfd);
 
-    // 先頭フォルダ（マウント名等）を除去して照合
-    const parts = videoPath.split('/');
-    for (let i = 1; i < parts.length; i++) {
-      const sub = parts.slice(i).join('/');
-      row = stmts.getPlaybackState.get(sub);
+    for (const cand of candidates) {
+      let row = stmts.getPlaybackState.get(cand);
       if (row) return row;
-    }
 
-    // 逆パターン
-    const suffixRow = stmts.findPlaybackSuffix.get('%/' + videoPath);
-    if (suffixRow) return suffixRow;
+      // 先頭フォルダ（マウント名等）を除去して照合
+      const parts = cand.split('/');
+      for (let i = 1; i < parts.length; i++) {
+        const sub = parts.slice(i).join('/');
+        row = stmts.getPlaybackState.get(sub);
+        if (row) return row;
+      }
+
+      // 逆パターン
+      const suffixRow = stmts.findPlaybackSuffix.get('%/' + cand);
+      if (suffixRow) return suffixRow;
+    }
 
     return null;
   }
