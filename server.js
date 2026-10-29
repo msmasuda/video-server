@@ -1,11 +1,19 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// セキュリティヘッダー設定
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+});
 
 app.use(express.json());
 
@@ -30,12 +38,26 @@ if (!fs.existsSync(VIDEO_PATH)) {
   console.warn('起動時に環境変数 VIDEO_PATH を設定してください。例: VIDEO_PATH=/Volumes/HDD/Videos npm start');
 }
 
+const MAX_TREE_DEPTH = 15;
+
 /**
  * 指定フォルダ配下をツリー構造で取得
  * - folder: { type: 'folder', name, children }
  * - file:   { type: 'file', name, path }  path は VIDEO_PATH からの相対パス
  */
-function buildTree(dir, baseDir = dir) {
+function buildTree(dir, baseDir = dir, depth = 0, visited = new Set()) {
+  if (depth > MAX_TREE_DEPTH) return [];
+
+  // シンボリックリンク等による循環参照を防止
+  let realDir;
+  try {
+    realDir = fs.realpathSync(dir);
+  } catch {
+    return [];
+  }
+  if (visited.has(realDir)) return [];
+  visited.add(realDir);
+
   const nodes = [];
   try {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -45,11 +67,17 @@ function buildTree(dir, baseDir = dir) {
 
       const full = path.join(dir, ent.name);
       const relative = path.relative(baseDir, full);
-      if (ent.isDirectory()) {
-        const children = buildTree(full, baseDir);
-        nodes.push({ type: 'folder', name: ent.name, children });
-      } else if (ent.isFile() && ent.name.toLowerCase().endsWith('.mp4')) {
-        nodes.push({ type: 'file', name: ent.name, path: relative });
+
+      try {
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          const children = buildTree(full, baseDir, depth + 1, visited);
+          nodes.push({ type: 'folder', name: ent.name, children });
+        } else if (stat.isFile() && ent.name.toLowerCase().endsWith('.mp4')) {
+          nodes.push({ type: 'file', name: ent.name, path: relative });
+        }
+      } catch {
+        // アクセス不可等は安全にスキップ
       }
     }
   } catch (err) {
@@ -64,16 +92,24 @@ function buildTree(dir, baseDir = dir) {
   });
 }
 
-/** 安全に動画ルート内の絶対パスに変換（パストラバーサル対策） */
+/** 安全に動画ルート内の絶対パスに変換（パストラバーサル・シンボリックリンク対策） */
 function resolveVideoPath(relativePath) {
+  if (typeof relativePath !== 'string') return null;
   const normalized = path.normalize(relativePath).replace(/^(\.\.(\/|\\|$))+/, '');
   const absolute = path.join(VIDEO_PATH, normalized);
-  const realBase = path.resolve(VIDEO_PATH);
-  const realResolved = path.resolve(absolute);
-  if (realResolved !== realBase && !realResolved.startsWith(realBase + path.sep)) {
+
+  try {
+    const realBase = fs.realpathSync(VIDEO_PATH);
+    if (!fs.existsSync(absolute)) return null;
+    const realResolved = fs.realpathSync(absolute);
+
+    if (realResolved !== realBase && !realResolved.startsWith(realBase + path.sep)) {
+      return null;
+    }
+    return realResolved;
+  } catch (err) {
     return null;
   }
-  return realResolved;
 }
 
 // 動画一覧 API（フォルダツリー形式）
@@ -89,7 +125,15 @@ app.get('/api/videos', (req, res) => {
 
 // ディレクトリ一覧取得 API（Webフォルダ選択モーダル用）
 app.get('/api/browse-directories', (req, res) => {
-  let targetPath = req.query.path ? path.resolve(req.query.path) : path.resolve(VIDEO_PATH);
+  const reqPath = typeof req.query.path === 'string' ? req.query.path.trim() : '';
+  let targetPath = reqPath ? path.resolve(reqPath) : path.resolve(VIDEO_PATH);
+
+  // 隠しディレクトリ（. で始まるフォルダ）への直接探索を防止
+  const parts = targetPath.split(path.sep);
+  if (parts.some((p) => p.startsWith('.') && p !== '.' && p !== '..')) {
+    return res.status(403).json({ error: '隠しディレクトリは探索できません' });
+  }
+
   if (!fs.existsSync(targetPath)) {
     targetPath = path.resolve(VIDEO_PATH);
     if (!fs.existsSync(targetPath)) {
@@ -113,11 +157,17 @@ app.get('/api/browse-directories', (req, res) => {
     const entries = fs.readdirSync(targetPath, { withFileTypes: true });
     for (const ent of entries) {
       if (ent.name.startsWith('.')) continue; // 隠しディレクトリ除外
-      if (ent.isDirectory()) {
-        directories.push({
-          name: ent.name,
-          path: path.join(targetPath, ent.name),
-        });
+      const full = path.join(targetPath, ent.name);
+      try {
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          directories.push({
+            name: ent.name,
+            path: full,
+          });
+        }
+      } catch {
+        // アクセス不可フォルダは安全にスキップ
       }
     }
   } catch (err) {
@@ -166,6 +216,13 @@ app.post('/api/select-folder', (req, res) => {
   // パスが直接渡された場合（Webフォルダピッカー等）
   if (requestedPath && typeof requestedPath === 'string') {
     const selectedPath = path.resolve(requestedPath.trim());
+
+    // 隠しディレクトリをルートに指定することを防止
+    const parts = selectedPath.split(path.sep);
+    if (parts.some((p) => p.startsWith('.') && p !== '.' && p !== '..')) {
+      return res.status(403).json({ error: '隠しディレクトリは選択できません' });
+    }
+
     if (fs.existsSync(selectedPath)) {
       try {
         const stat = fs.statSync(selectedPath);
@@ -183,14 +240,14 @@ app.post('/api/select-folder', (req, res) => {
     }
   }
 
-  // パス指定がなく、macOS の場合は AppleScript ダイアログを表示
+  // パス指定がなく、macOS の場合は AppleScript ダイアログを表示（シェルを介さず直接実行）
   if (process.platform === 'darwin') {
-    const script = `osascript -e 'tell application "System Events"
+    const script = `tell application "System Events"
       activate
       return POSIX path of (choose folder with prompt "動画フォルダを選択してください")
-    end tell'`;
+    end tell`;
 
-    exec(script, (error, stdout, stderr) => {
+    execFile('/usr/bin/osascript', ['-e', script], (error, stdout, stderr) => {
       if (error) {
         if (error.code === 1) {
           return res.json({ canceled: true });
