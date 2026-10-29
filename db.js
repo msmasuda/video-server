@@ -34,10 +34,12 @@ function getNextTimestamp() {
 const stmts = {
   getFavorites: db.prepare('SELECT path FROM favorites ORDER BY created_at ASC'),
   isFavorite: db.prepare('SELECT 1 FROM favorites WHERE path = ?'),
+  findFavoriteSuffix: db.prepare('SELECT path FROM favorites WHERE path LIKE ? LIMIT 1'),
   addFavorite: db.prepare('INSERT OR IGNORE INTO favorites (path) VALUES (?)'),
   removeFavorite: db.prepare('DELETE FROM favorites WHERE path = ?'),
 
   getPlaybackState: db.prepare('SELECT path, time FROM playback_state WHERE path = ?'),
+  findPlaybackSuffix: db.prepare('SELECT path, time FROM playback_state WHERE path LIKE ? LIMIT 1'),
   getLastPlaybackState: db.prepare('SELECT path, time FROM playback_state ORDER BY updated_at DESC LIMIT 1'),
   upsertPlaybackState: db.prepare(`
     INSERT INTO playback_state (path, time, updated_at)
@@ -53,15 +55,40 @@ function getFavorites() {
   return stmts.getFavorites.all().map((row) => row.path);
 }
 
+/** 指定パス、または前方・後方一致でお気に入りの実際のキーを取得 */
+function findFavoriteKey(videoPath) {
+  if (!videoPath || typeof videoPath !== 'string') return null;
+  // 1. 完全一致
+  if (stmts.isFavorite.get(videoPath)) return videoPath;
+
+  // 2. 先頭のフォルダ名（マウント名など）を除去して照合
+  // 例: HD-ADU3/MyVideo/foo.mp4 -> MyVideo/foo.mp4
+  const parts = videoPath.split('/');
+  for (let i = 1; i < parts.length; i++) {
+    const sub = parts.slice(i).join('/');
+    if (stmts.isFavorite.get(sub)) return sub;
+  }
+
+  // 3. 逆パターン（DB側が長いパスの場合）
+  const suffixRow = stmts.findFavoriteSuffix.get('%/' + videoPath);
+  if (suffixRow) return suffixRow.path;
+
+  return null;
+}
+
 /** 指定パスがお気に入りか判定 */
 function isFavorite(videoPath) {
-  return !!stmts.isFavorite.get(videoPath);
+  return findFavoriteKey(videoPath) !== null;
 }
 
 /** お気に入りをトグル（登録ならtrue、解除ならfalse） */
 function toggleFavorite(videoPath) {
-  if (isFavorite(videoPath)) {
-    stmts.removeFavorite.run(videoPath);
+  const existingKey = findFavoriteKey(videoPath);
+  if (existingKey) {
+    stmts.removeFavorite.run(existingKey);
+    if (existingKey !== videoPath) {
+      stmts.removeFavorite.run(videoPath);
+    }
     return false;
   } else {
     stmts.addFavorite.run(videoPath);
@@ -81,8 +108,23 @@ function addFavorites(paths) {
 
 /** 再生位置を取得（videoPath指定時はその動画、未指定時は直近に再生した動画） */
 function getPlayback(videoPath) {
-  if (videoPath) {
-    return stmts.getPlaybackState.get(videoPath) || null;
+  if (videoPath && typeof videoPath === 'string') {
+    let row = stmts.getPlaybackState.get(videoPath);
+    if (row) return row;
+
+    // 先頭フォルダ（マウント名等）を除去して照合
+    const parts = videoPath.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      const sub = parts.slice(i).join('/');
+      row = stmts.getPlaybackState.get(sub);
+      if (row) return row;
+    }
+
+    // 逆パターン
+    const suffixRow = stmts.findPlaybackSuffix.get('%/' + videoPath);
+    if (suffixRow) return suffixRow;
+
+    return null;
   }
   return stmts.getLastPlaybackState.get() || null;
 }
