@@ -506,18 +506,24 @@
 
       function findFavoriteMatch(path) {
         if (!path || typeof path !== 'string') return null;
-        if (favorites.includes(path)) return path;
+        const normPath = path.normalize('NFC');
+        const normFavs = favorites.map((f) => (typeof f === 'string' ? f.normalize('NFC') : ''));
 
-        // 先頭のフォルダ名（マウント名など）を除去して照合
-        const parts = path.split('/');
+        // 1. 完全一致
+        const exactIdx = normFavs.indexOf(normPath);
+        if (exactIdx !== -1) return favorites[exactIdx];
+
+        // 2. 先頭のフォルダ名（マウント名など）を除去して照合
+        const parts = normPath.split('/');
         for (let i = 1; i < parts.length; i++) {
           const sub = parts.slice(i).join('/');
-          if (favorites.includes(sub)) return sub;
+          const subIdx = normFavs.indexOf(sub);
+          if (subIdx !== -1) return favorites[subIdx];
         }
 
-        // 逆パターン（favorites 内のパスの方が長い場合）
-        const match = favorites.find((fav) => fav.endsWith('/' + path));
-        if (match) return match;
+        // 3. 逆パターン（favorites 内のパスの方が長い場合）
+        const matchIdx = normFavs.findIndex((f) => f.endsWith('/' + normPath));
+        if (matchIdx !== -1) return favorites[matchIdx];
 
         return null;
       }
@@ -891,15 +897,22 @@
 
           if (resumeTarget) {
             let targetPath = null;
-            if (videoList.includes(resumeTarget.path)) {
-              targetPath = resumeTarget.path;
+            const normResumePath = (resumeTarget.path || '').normalize('NFC');
+            const normVideoList = videoList.map((v) => v.normalize('NFC'));
+
+            const exactIdx = normVideoList.indexOf(normResumePath);
+            if (exactIdx !== -1) {
+              targetPath = videoList[exactIdx];
             } else {
               // 先頭フォルダの違いを吸収してマッチ
-              targetPath = videoList.find(
+              const matchIdx = normVideoList.findIndex(
                 (v) =>
-                  v.endsWith('/' + resumeTarget.path) ||
-                  resumeTarget.path.endsWith('/' + v)
+                  v.endsWith('/' + normResumePath) ||
+                  normResumePath.endsWith('/' + v)
               );
+              if (matchIdx !== -1) {
+                targetPath = videoList[matchIdx];
+              }
             }
             if (targetPath) {
               playVideo(targetPath, resumeTarget.time);
