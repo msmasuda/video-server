@@ -59,17 +59,35 @@ Node.js 22.5+ 組み込みの `node:sqlite` を使用しているため、**追�
 
 > ※ データベースファイルの保存先は、環境変数 `DB_PATH`（デフォルト: プロジェクト直下の `data.db`）で変更可能です。
 
-## セットアップ
+## 起動方法
+
+### 方法 A: Docker Compose で起動（おすすめ・Node.js インストール不要）
+
+ホストマシンに Node.js 22 をインストールすることなく、Docker だけで即座に起動できます。
 
 ```bash
-npm install
+# 1. 設定ファイルの作成（外付けHDDのパスを設定）
+cp .env.example .env
+# 必要に応じて .env 内の VIDEO_DIR を編集（例: VIDEO_DIR=/mnt/videos）
+
+# 2. 起動（バックグラウンド実行）
+docker compose up -d
+
+# ログ確認
+docker compose logs -f
+
+# 停止
+docker compose down
 ```
 
-## 起動方法
+### 方法 B: Node.js 直接起動
 
 動画フォルダを環境変数 `VIDEO_PATH` で指定して起動します。
 
 ```bash
+# 事前準備
+npm install
+
 # 例: Mac (外付けHDD)
 VIDEO_PATH="/Volumes/MyDrive/Movies" npm start
 

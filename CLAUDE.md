@@ -5,7 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-# Install dependencies
+# Docker Compose (recommended for Linux/headless)
+docker compose up -d
+
+# Install dependencies for local run
 npm install
 
 # Start the server (default: ~/Movies, port 3000)

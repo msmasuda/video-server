@@ -12,6 +12,7 @@ app.use(express.json());
 // 動画フォルダのデフォルトパスを判定（環境変数 > プラットフォームごとの既定フォルダ）
 function getDefaultVideoPath() {
   if (process.env.VIDEO_PATH) return process.env.VIDEO_PATH;
+  if (fs.existsSync('/videos')) return '/videos'; // Docker コンテナ用マウント先
   const home = process.env.HOME || '';
   const candidates = process.platform === 'darwin'
     ? [path.join(home, 'Movies'), path.join(home, 'Videos')]
@@ -143,6 +144,7 @@ app.get('/api/browse-directories', (req, res) => {
   if (process.platform === 'darwin' && fs.existsSync('/Volumes')) {
     shortcuts.push({ name: '/Volumes (外付けドライブ)', path: '/Volumes' });
   }
+  if (fs.existsSync('/videos')) shortcuts.push({ name: '動画 (/videos)', path: '/videos' });
   if (fs.existsSync('/mnt')) shortcuts.push({ name: '/mnt', path: '/mnt' });
   if (fs.existsSync('/media')) shortcuts.push({ name: '/media', path: '/media' });
   shortcuts.push({ name: 'ルート (/)', path: '/' });
