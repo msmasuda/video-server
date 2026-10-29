@@ -1,0 +1,8 @@
+node_modules
+.git
+.gitignore
+data.db*
+.DS_Store
+README.md
+CLAUDE.md
+video-server.service.example

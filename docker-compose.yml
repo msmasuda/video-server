@@ -1,0 +1,16 @@
+services:
+  video-server:
+    build: .
+    container_name: video-server
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - PORT=3000
+      - VIDEO_PATH=/videos
+      - DB_PATH=/data/data.db
+    volumes:
+      # 外付けHDDなどの動画フォルダ（読み取り専用で安全にマウント）
+      - "${VIDEO_DIR:-/mnt/videos}:/videos:ro"
+      # お気に入り・再生位置の永続化用 SQLite データベース
+      - ./data:/data

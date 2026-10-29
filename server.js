@@ -9,8 +9,21 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 
-// 動画フォルダ（外付けHDDのパスを指定。例: /Volumes/MyDrive/Movies）
-let VIDEO_PATH = process.env.VIDEO_PATH || path.join(process.env.HOME || '', 'Movies');
+// 動画フォルダのデフォルトパスを判定（環境変数 > プラットフォームごとの既定フォルダ）
+function getDefaultVideoPath() {
+  if (process.env.VIDEO_PATH) return process.env.VIDEO_PATH;
+  if (fs.existsSync('/videos')) return '/videos'; // Docker コンテナ用マウント先
+  const home = process.env.HOME || '';
+  const candidates = process.platform === 'darwin'
+    ? [path.join(home, 'Movies'), path.join(home, 'Videos')]
+    : [path.join(home, 'Videos'), path.join(home, 'Movies'), '/mnt', '/media'];
+  for (const c of candidates) {
+    if (c && fs.existsSync(c)) return c;
+  }
+  return home || process.cwd();
+}
+
+let VIDEO_PATH = getDefaultVideoPath();
 
 if (!fs.existsSync(VIDEO_PATH)) {
   console.warn(`警告: VIDEO_PATH が存在しません: ${VIDEO_PATH}`);
@@ -66,37 +79,140 @@ function resolveVideoPath(relativePath) {
 // 動画一覧 API（フォルダツリー形式）
 app.get('/api/videos', (req, res) => {
   const tree = buildTree(VIDEO_PATH);
-  res.json({ basePath: VIDEO_PATH, tree });
+  res.json({
+    basePath: VIDEO_PATH,
+    tree,
+    platform: process.platform,
+    hasNativePicker: process.platform === 'darwin',
+  });
 });
 
-// OSのフォルダ選択ダイアログを呼び出すAPI (Mac専用)
-app.post('/api/select-folder', (req, res) => {
-  // AppleScriptを使ってFinderの「フォルダを選択」ダイアログを表示
-  // activate で前面に出し、POSIX path を取得する
-  const script = `osascript -e 'tell application "System Events"
-    activate
-    return POSIX path of (choose folder with prompt "動画フォルダを選択してください")
-  end tell'`;
+// ディレクトリ一覧取得 API（Webフォルダ選択モーダル用）
+app.get('/api/browse-directories', (req, res) => {
+  let targetPath = req.query.path ? path.resolve(req.query.path) : path.resolve(VIDEO_PATH);
+  if (!fs.existsSync(targetPath)) {
+    targetPath = path.resolve(VIDEO_PATH);
+    if (!fs.existsSync(targetPath)) {
+      targetPath = process.env.HOME || '/';
+    }
+  }
 
-  exec(script, (error, stdout, stderr) => {
-    if (error) {
-      // ユーザーがキャンセルした場合 (error code 1)
-      if (error.code === 1) {
-        return res.json({ canceled: true });
+  try {
+    const stat = fs.statSync(targetPath);
+    if (!stat.isDirectory()) {
+      targetPath = path.dirname(targetPath);
+    }
+  } catch (err) {
+    return res.status(400).json({ error: '無効なパスです: ' + err.message });
+  }
+
+  const parentPath = path.dirname(targetPath);
+  const directories = [];
+
+  try {
+    const entries = fs.readdirSync(targetPath, { withFileTypes: true });
+    for (const ent of entries) {
+      if (ent.name.startsWith('.')) continue; // 隠しディレクトリ除外
+      if (ent.isDirectory()) {
+        directories.push({
+          name: ent.name,
+          path: path.join(targetPath, ent.name),
+        });
       }
-      console.error('Folder selection error:', error);
-      return res.status(500).json({ error: 'フォルダ選択に失敗しました' });
     }
+  } catch (err) {
+    return res.json({
+      currentPath: targetPath,
+      parentPath: targetPath === parentPath ? null : parentPath,
+      directories: [],
+      error: 'このディレクトリへのアクセス権限がありません (' + (err.code || err.message) + ')',
+    });
+  }
 
-    // 両端の空白や改行をトリム
-    const selectedPath = stdout.trim();
-    if (selectedPath && fs.existsSync(selectedPath)) {
-      VIDEO_PATH = selectedPath; // 参照するフォルダを更新
-      res.json({ success: true, path: selectedPath });
-    } else {
-      res.status(400).json({ error: '無効なパスが選択されました' });
-    }
+  directories.sort((a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true }));
+
+  // システム共通の便利なショートカット候補
+  const shortcuts = [];
+  const home = process.env.HOME;
+  if (home && fs.existsSync(home)) {
+    shortcuts.push({ name: 'ホーム (~)', path: home });
+    const homeMovies = path.join(home, 'Movies');
+    if (fs.existsSync(homeMovies)) shortcuts.push({ name: 'Movies', path: homeMovies });
+    const homeVideos = path.join(home, 'Videos');
+    if (fs.existsSync(homeVideos)) shortcuts.push({ name: 'Videos', path: homeVideos });
+  }
+  if (process.platform === 'darwin' && fs.existsSync('/Volumes')) {
+    shortcuts.push({ name: '/Volumes (外付けドライブ)', path: '/Volumes' });
+  }
+  if (fs.existsSync('/videos')) shortcuts.push({ name: '動画 (/videos)', path: '/videos' });
+  if (fs.existsSync('/mnt')) shortcuts.push({ name: '/mnt', path: '/mnt' });
+  if (fs.existsSync('/media')) shortcuts.push({ name: '/media', path: '/media' });
+  shortcuts.push({ name: 'ルート (/)', path: '/' });
+
+  res.json({
+    currentPath: targetPath,
+    parentPath: targetPath === parentPath ? null : parentPath,
+    directories,
+    shortcuts,
+    platform: process.platform,
+    hasNativePicker: process.platform === 'darwin',
   });
+});
+
+// フォルダ選択・変更 API
+app.post('/api/select-folder', (req, res) => {
+  const { path: requestedPath } = req.body || {};
+
+  // パスが直接渡された場合（Webフォルダピッカー等）
+  if (requestedPath && typeof requestedPath === 'string') {
+    const selectedPath = path.resolve(requestedPath.trim());
+    if (fs.existsSync(selectedPath)) {
+      try {
+        const stat = fs.statSync(selectedPath);
+        if (stat.isDirectory()) {
+          VIDEO_PATH = selectedPath;
+          return res.json({ success: true, path: selectedPath });
+        } else {
+          return res.status(400).json({ error: '指定されたパスはフォルダではありません' });
+        }
+      } catch (err) {
+        return res.status(400).json({ error: 'フォルダにアクセスできません: ' + err.message });
+      }
+    } else {
+      return res.status(400).json({ error: '指定されたフォルダが存在しません' });
+    }
+  }
+
+  // パス指定がなく、macOS の場合は AppleScript ダイアログを表示
+  if (process.platform === 'darwin') {
+    const script = `osascript -e 'tell application "System Events"
+      activate
+      return POSIX path of (choose folder with prompt "動画フォルダを選択してください")
+    end tell'`;
+
+    exec(script, (error, stdout, stderr) => {
+      if (error) {
+        if (error.code === 1) {
+          return res.json({ canceled: true });
+        }
+        console.error('Folder selection error:', error);
+        return res.status(500).json({ error: 'フォルダ選択に失敗しました' });
+      }
+
+      const selectedPath = stdout.trim();
+      if (selectedPath && fs.existsSync(selectedPath)) {
+        VIDEO_PATH = path.resolve(selectedPath);
+        res.json({ success: true, path: VIDEO_PATH });
+      } else {
+        res.status(400).json({ error: '無効なパスが選択されました' });
+      }
+    });
+  } else {
+    // Linux等のCLI/非Mac環境でパス指定がない場合
+    return res.status(400).json({
+      error: 'この環境ではGUIダイアログは利用できません。Webフォルダ選択をご利用ください。',
+    });
+  }
 });
 
 // お気に入り一覧 API
