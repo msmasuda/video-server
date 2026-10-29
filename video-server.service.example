@@ -1,0 +1,24 @@
+[Unit]
+Description=Local Video Server (Node.js)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+# video-server の配置先ディレクトリを指定してください
+WorkingDirectory=/home/ubuntu/video-server
+
+# 環境変数設定
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# 外付けHDDなどの動画フォルダマウント先を指定
+Environment=VIDEO_PATH=/mnt/videos
+
+# Node.js 実行パス（which node で確認したパス）
+ExecStart=/usr/bin/node /home/ubuntu/video-server/server.js
+
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

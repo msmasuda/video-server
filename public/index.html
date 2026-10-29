@@ -41,6 +41,9 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         font-weight: 600;
         font-size: 1.1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
       aside {
         overflow-y: auto;
@@ -108,6 +111,33 @@
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .tree-file .file-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+      .open-tab-icon {
+        opacity: 0;
+        margin-left: 0.5rem;
+        padding: 0.1rem 0.35rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        color: var(--muted);
+        transition: opacity 0.15s, color 0.15s, background 0.15s;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .tree-file:hover .open-tab-icon {
+        opacity: 1;
+      }
+      .open-tab-icon:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: var(--text);
       }
       .video-tree .tree-file:hover {
         background: rgba(255, 255, 255, 0.08);
@@ -161,11 +191,212 @@
       .btn:hover {
         background: rgba(255, 255, 255, 0.15);
       }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* モーダル */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 650px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        animation: modalFadeIn 0.15s ease-out;
+      }
+      @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.96); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .modal-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 1.05rem;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 0.35rem;
+        border-radius: 4px;
+      }
+      .modal-close:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .modal-body {
+        padding: 1rem 1.25rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .folder-path-bar {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .folder-path-input {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+      }
+      .folder-path-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .folder-shortcuts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .folder-shortcuts-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-right: 0.2rem;
+      }
+      .folder-shortcut-chip {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.8rem;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .folder-shortcut-chip:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: var(--accent);
+      }
+      .folder-browser {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        min-height: 240px;
+        max-height: 320px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .folder-browser-header {
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .current-dir-label {
+        font-size: 0.85rem;
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: monospace;
+      }
+      .folder-list {
+        list-style: none;
+        margin: 0;
+        padding: 0.35rem 0;
+        overflow-y: auto;
+        flex: 1;
+      }
+      .folder-list-item {
+        padding: 0.45rem 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        border-radius: 4px;
+        margin: 0.1rem 0.35rem;
+        transition: background 0.1s;
+      }
+      .folder-list-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .folder-item-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .folder-item-action {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .folder-browser-empty {
+        padding: 2rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .modal-footer {
+        padding: 0.85rem 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .modal-footer-right {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #0d0d12;
+        font-weight: 600;
+        border-color: transparent;
+      }
+      .btn-primary:hover {
+        background: var(--accent-hover);
+      }
+      .btn-sm {
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
+      }
+
     </style>
   </head>
   <body>
     <div class="layout">
-      <header>動画サーバー</header>
+      <header>
+        <span>動画サーバー</span>
+        <button class="btn" id="selectFolderBtn">📂 フォルダを選択</button>
+      </header>
       <aside>
         <ul class="video-tree" id="videoTree"></ul>
         <p class="loading" id="listStatus">読み込み中…</p>
@@ -182,27 +413,149 @@
           ></video>
         </div>
         <div class="controls" id="videoControls" style="display: none">
+          <button class="btn" id="rewind30Btn">⏪ 60秒</button>
+          <button class="btn" id="rewind10Btn">⏪ 30秒</button>
+          <button class="btn" id="forward10Btn">30秒 ⏩</button>
+          <button class="btn" id="forward30Btn">60秒 ⏩</button>
+          <button class="btn" id="favBtn">☆ お気に入り</button>
           <button class="btn" id="sizeToggle">サイズ2倍</button>
+          <button class="btn" id="openNewTabBtn" title="別タブで開く">↗ 別タブで開く</button>
         </div>
         <p class="empty" id="emptyMsg">左の一覧から動画を選んでください</p>
       </main>
     </div>
 
+    <!-- フォルダ選択モーダル -->
+    <div class="modal-backdrop" id="folderModal" style="display: none">
+      <div class="modal">
+        <div class="modal-header">
+          <span>📂 フォルダを選択</span>
+          <button class="modal-close" id="modalCloseBtn" title="閉じる">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="folder-path-bar">
+            <input
+              type="text"
+              id="folderPathInput"
+              class="folder-path-input"
+              placeholder="/path/to/folder"
+              autocomplete="off"
+            />
+            <button class="btn btn-primary" id="folderPathGoBtn">移動</button>
+          </div>
+          <div class="folder-shortcuts" id="folderShortcuts">
+            <span class="folder-shortcuts-label">ショートカット:</span>
+          </div>
+          <div class="folder-browser">
+            <div class="folder-browser-header">
+              <button class="btn btn-sm" id="folderUpBtn" title="親フォルダへ">⬆ 上へ</button>
+              <span class="current-dir-label" id="currentDirLabel">/</span>
+            </div>
+            <ul class="folder-list" id="folderList"></ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button class="btn" id="macFinderBtn" style="display: none">🍎 Finderで選択</button>
+          </div>
+          <div class="modal-footer-right">
+            <button class="btn" id="modalCancelBtn">キャンセル</button>
+            <button class="btn btn-primary" id="modalSelectBtn">このフォルダに決定</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script>
       const VIDEO_KEY = 'video-server-current';
       const TIME_KEY = 'video-server-time';
+      const FAVORITES_KEY = 'video-server-favorites';
+
+      let favorites = [];
+      const playbackCache = {}; // path -> time
+      let saveTimer = null;
+      let pendingSave = null;
+
+      // お気に入り初期化＆マイグレーション
+      async function loadFavorites() {
+        try {
+          // localStorage に過去データがあれば SQLite に自動同期（マイグレーション）
+          let localFavs = [];
+          try {
+            localFavs = JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+          } catch (e) {}
+
+          if (localFavs.length > 0) {
+            await fetch('/api/favorites/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paths: localFavs }),
+            }).catch(() => {});
+            localStorage.removeItem(FAVORITES_KEY);
+          }
+
+          const res = await fetch('/api/favorites');
+          if (res.ok) {
+            const data = await res.json();
+            favorites = data.favorites || [];
+          }
+        } catch (e) {
+          console.error('お気に入りの読み込みに失敗しました:', e);
+        }
+      }
+
+      function isFavorite(path) {
+        return favorites.includes(path);
+      }
+
+      async function toggleFavorite(path) {
+        // 楽観的更新
+        const idx = favorites.indexOf(path);
+        if (idx === -1) {
+          favorites.push(path);
+        } else {
+          favorites.splice(idx, 1);
+        }
+        updateFavBtn(path);
+        refreshTreeStars();
+
+        try {
+          const res = await fetch('/api/favorites/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            favorites = data.favorites || [];
+            updateFavBtn(path);
+            refreshTreeStars();
+          }
+        } catch (e) {
+          console.error('お気に入りの保存に失敗しました:', e);
+        }
+      }
 
       const videoTreeEl = document.getElementById('videoTree');
       const listStatusEl = document.getElementById('listStatus');
       const playerWrap = document.getElementById('playerWrap');
       const videoControls = document.getElementById('videoControls');
+      const rewind30Btn = document.getElementById('rewind30Btn');
+      const rewind10Btn = document.getElementById('rewind10Btn');
+      const forward10Btn = document.getElementById('forward10Btn');
+      const forward30Btn = document.getElementById('forward30Btn');
       const sizeToggle = document.getElementById('sizeToggle');
+      const openNewTabBtn = document.getElementById('openNewTabBtn');
       const emptyMsg = document.getElementById('emptyMsg');
       const video = document.getElementById('video');
       const resizer = document.getElementById('resizer');
       const layout = document.querySelector('.layout');
+      const selectFolderBtn = document.getElementById('selectFolderBtn');
+      const favBtn = document.getElementById('favBtn');
 
       let videoList = [];
+      let currentPath = null;
+      let lastTree = [];
 
       function showPlayer(show) {
         playerWrap.style.display = show ? 'block' : 'none';
@@ -216,25 +569,10 @@
         });
       }
 
-      function playVideo(relativePath) {
-        const url = '/video?path=' + encodeURIComponent(relativePath);
-        video.src = url;
-        video.load();
-
-        const saved = getSavedState();
-        if (saved && saved.path === relativePath && saved.time > 0) {
-          video.currentTime = saved.time;
-        } else {
-          video.currentTime = 0;
-        }
-
-        video.play().catch(() => {});
-        showPlayer(true);
-        setActiveItem(relativePath);
-        saveState(relativePath, video.currentTime);
-      }
-
       function getSavedState() {
+        if (currentPath && playbackCache[currentPath] !== undefined) {
+          return { path: currentPath, time: playbackCache[currentPath] };
+        }
         try {
           const raw = localStorage.getItem(VIDEO_KEY);
           const time = localStorage.getItem(TIME_KEY);
@@ -245,28 +583,131 @@
       }
 
       function saveState(path, time) {
+        if (!path) return;
+        const safeTime = Math.max(0, typeof time === 'number' && !isNaN(time) ? time : 0);
+        playbackCache[path] = safeTime;
+
         try {
           localStorage.setItem(VIDEO_KEY, path);
-          localStorage.setItem(TIME_KEY, String(time >= 0 ? time : 0));
+          localStorage.setItem(TIME_KEY, String(safeTime));
         } catch (e) {}
+
+        pendingSave = { path, time: safeTime };
+        if (!saveTimer) {
+          saveTimer = setTimeout(() => {
+            flushSaveState();
+          }, 2000);
+        }
+      }
+
+      function flushSaveState() {
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        if (!pendingSave) return;
+        const payload = pendingSave;
+        pendingSave = null;
+
+        fetch('/api/playback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        }).catch(() => {});
+      }
+
+      async function playVideo(relativePath, resumeTime = null) {
+        flushSaveState();
+        currentPath = relativePath;
+        const url = '/video?path=' + encodeURIComponent(relativePath);
+        video.src = url;
+        video.load();
+
+        let initialTime = 0;
+        if (resumeTime !== null && resumeTime >= 0) {
+          initialTime = resumeTime;
+        } else if (playbackCache[relativePath] !== undefined) {
+          initialTime = playbackCache[relativePath];
+        } else {
+          try {
+            const res = await fetch('/api/playback?path=' + encodeURIComponent(relativePath));
+            if (res.ok) {
+              const data = await res.json();
+              if (data.playback && typeof data.playback.time === 'number' && data.playback.time > 0) {
+                initialTime = data.playback.time;
+              }
+            }
+          } catch (e) {}
+        }
+
+        playbackCache[relativePath] = initialTime;
+        if (initialTime > 0) {
+          video.currentTime = initialTime;
+        } else {
+          video.currentTime = 0;
+        }
+
+        video.play().catch(() => {});
+        showPlayer(true);
+        updateFavBtn(relativePath);
+        setActiveItem(relativePath);
+        saveState(relativePath, initialTime);
       }
 
       video.addEventListener('timeupdate', () => {
-        const el = videoTreeEl.querySelector('.tree-file.active');
-        const rel = el ? el.dataset.path : null;
-        if (rel) saveState(rel, video.currentTime);
+        if (currentPath) {
+          saveState(currentPath, video.currentTime);
+        }
+      });
+
+      video.addEventListener('pause', () => {
+        if (currentPath) {
+          saveState(currentPath, video.currentTime);
+          flushSaveState();
+        }
       });
 
       video.addEventListener('ended', () => {
-        const el = videoTreeEl.querySelector('.tree-file.active');
-        const rel = el ? el.dataset.path : null;
-        if (rel) saveState(rel, 0);
+        if (currentPath) {
+          saveState(currentPath, 0);
+          flushSaveState();
+        }
+      });
+
+      window.addEventListener('beforeunload', () => {
+        if (currentPath && video.currentTime > 0) {
+          pendingSave = { path: currentPath, time: video.currentTime };
+        }
+        flushSaveState();
       });
 
       sizeToggle.addEventListener('click', () => {
         playerWrap.classList.toggle('large');
         const isLarge = playerWrap.classList.contains('large');
         sizeToggle.textContent = isLarge ? 'サイズ標準' : 'サイズ2倍';
+      });
+
+      openNewTabBtn.addEventListener('click', () => {
+        openInNewTab(currentPath);
+      });
+
+      favBtn.addEventListener('click', () => {
+        if (!currentPath) return;
+        toggleFavorite(currentPath);
+      });
+
+      rewind30Btn.addEventListener('click', () => {
+        video.currentTime = Math.max(0, video.currentTime - 60);
+      });
+      rewind10Btn.addEventListener('click', () => {
+        video.currentTime = Math.max(0, video.currentTime - 30);
+      });
+      forward10Btn.addEventListener('click', () => {
+        video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 30);
+      });
+      forward30Btn.addEventListener('click', () => {
+        video.currentTime = Math.min(video.duration || Infinity, video.currentTime + 60);
       });
 
       function flattenTree(nodes) {
@@ -296,10 +737,72 @@
               html += '<ul>' + renderTree(n.children) + '</ul>';
             }
           } else {
-            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}">${escapeHtml(n.name)}</li>`;
+            const star = isFavorite(n.path) ? '<span data-star style="color:var(--accent)">★ </span>' : '';
+            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}"><span class="file-label">${star}${escapeHtml(n.name)}</span><span class="open-tab-icon" title="別タブで開く">↗</span></li>`;
           }
         }
         return html;
+      }
+
+      function openInNewTab(path) {
+        if (!path) return;
+        let time = 0;
+        if (currentPath === path && video.currentTime > 0) {
+          time = Math.floor(video.currentTime);
+          video.pause();
+          saveState(path, time);
+          flushSaveState();
+        } else if (playbackCache[path] > 0) {
+          time = Math.floor(playbackCache[path]);
+        } else {
+          const saved = getSavedState();
+          if (saved && saved.path === path && saved.time > 0) {
+            time = Math.floor(saved.time);
+          }
+        }
+        const tParam = time > 0 ? `&t=${time}` : '';
+        const win = window.open(`/player.html?path=${encodeURIComponent(path)}${tParam}`, 'videoPlayer');
+        if (win) win.focus();
+      }
+
+      function rebindTree() {
+        videoTreeEl.querySelectorAll('.tree-folder').forEach((el) => {
+          if (el.nextElementSibling?.tagName === 'UL') {
+            el.addEventListener('click', () => el.classList.toggle('collapsed'));
+          }
+        });
+        videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            if (e.target.closest('.open-tab-icon')) return;
+            playVideo(el.dataset.path);
+          });
+        });
+        videoTreeEl.querySelectorAll('.open-tab-icon').forEach((el) => {
+          el.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const path = el.closest('.tree-file')?.dataset.path;
+            openInNewTab(path);
+          });
+        });
+      }
+
+      function updateFavBtn(path) {
+        favBtn.textContent = isFavorite(path) ? '★ お気に入り済み' : '☆ お気に入り';
+      }
+
+      function refreshTreeStars() {
+        videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
+          const label = el.querySelector('.file-label') || el;
+          const existing = label.querySelector('span[data-star]');
+          if (existing) existing.remove();
+          if (isFavorite(el.dataset.path)) {
+            const star = document.createElement('span');
+            star.dataset.star = '';
+            star.style.color = 'var(--accent)';
+            star.textContent = '★ ';
+            label.prepend(star);
+          }
+        });
       }
 
       function escapeAttr(s) {
@@ -308,32 +811,67 @@
         return div.innerHTML.replace(/"/g, '&quot;');
       }
 
+      let serverInfo = { basePath: '', platform: '', hasNativePicker: false };
+      let currentBrowsePath = '';
+      let parentBrowsePath = null;
+
       async function loadVideos() {
         try {
-          const res = await fetch('/api/videos');
-          if (!res.ok) throw new Error(res.statusText);
-          const data = await res.json();
+          const [videosRes] = await Promise.all([
+            fetch('/api/videos'),
+            loadFavorites(),
+          ]);
+          if (!videosRes.ok) throw new Error(videosRes.statusText);
+          const data = await videosRes.json();
           const tree = data.tree || [];
+          lastTree = tree;
           videoList = flattenTree(tree);
+          serverInfo = {
+            basePath: data.basePath || '',
+            platform: data.platform || '',
+            hasNativePicker: !!data.hasNativePicker,
+          };
+          currentBrowsePath = serverInfo.basePath;
+          if (serverInfo.basePath) {
+            selectFolderBtn.title = `現在のフォルダ: ${serverInfo.basePath}`;
+          }
+
           listStatusEl.textContent = '';
           listStatusEl.className = '';
 
           videoTreeEl.innerHTML = renderTree(tree);
+          rebindTree();
 
-          videoTreeEl.querySelectorAll('.tree-folder').forEach((el) => {
-            if (el.nextElementSibling?.tagName === 'UL') {
-              el.addEventListener('click', () =>
-                el.classList.toggle('collapsed'),
-              );
+          // 直近の再生状態を取得（SQLite）
+          let resumeTarget = null;
+          try {
+            const pbRes = await fetch('/api/playback');
+            if (pbRes.ok) {
+              const pbData = await pbRes.json();
+              if (pbData.playback && pbData.playback.path) {
+                resumeTarget = pbData.playback;
+              }
             }
-          });
-          videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
-            el.addEventListener('click', () => playVideo(el.dataset.path));
-          });
+          } catch (e) {}
 
-          const saved = getSavedState();
-          if (saved && videoList.includes(saved.path)) {
-            playVideo(saved.path);
+          // SQLite にない場合、localStorage からのマイグレーション
+          if (!resumeTarget) {
+            try {
+              const raw = localStorage.getItem(VIDEO_KEY);
+              const time = localStorage.getItem(TIME_KEY);
+              if (raw) {
+                resumeTarget = { path: raw, time: parseFloat(time) || 0 };
+                fetch('/api/playback', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(resumeTarget),
+                }).catch(() => {});
+              }
+            } catch (e) {}
+          }
+
+          if (resumeTarget && videoList.includes(resumeTarget.path)) {
+            playVideo(resumeTarget.path, resumeTarget.time);
           }
         } catch (err) {
           listStatusEl.textContent = '一覧の取得に失敗しました: ' + err.message;
@@ -372,6 +910,175 @@
           document.body.style.cursor = '';
           document.body.style.userSelect = '';
         }
+      });
+
+      // フォルダ選択モーダル
+      const folderModal = document.getElementById('folderModal');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+      const modalCancelBtn = document.getElementById('modalCancelBtn');
+      const modalSelectBtn = document.getElementById('modalSelectBtn');
+      const macFinderBtn = document.getElementById('macFinderBtn');
+      const folderPathInput = document.getElementById('folderPathInput');
+      const folderPathGoBtn = document.getElementById('folderPathGoBtn');
+      const folderUpBtn = document.getElementById('folderUpBtn');
+      const currentDirLabel = document.getElementById('currentDirLabel');
+      const folderShortcutsEl = document.getElementById('folderShortcuts');
+      const folderListEl = document.getElementById('folderList');
+
+      function openFolderModal() {
+        folderModal.style.display = 'flex';
+        if (serverInfo.hasNativePicker) {
+          macFinderBtn.style.display = 'inline-block';
+        } else {
+          macFinderBtn.style.display = 'none';
+        }
+        browseDirectory(currentBrowsePath || serverInfo.basePath || '');
+      }
+
+      function closeFolderModal() {
+        folderModal.style.display = 'none';
+      }
+
+      async function browseDirectory(dirPath) {
+        folderListEl.innerHTML = '<li class="folder-browser-empty">読み込み中…</li>';
+        try {
+          const url = dirPath
+            ? `/api/browse-directories?path=${encodeURIComponent(dirPath)}`
+            : '/api/browse-directories';
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data.error && (!data.directories || data.directories.length === 0)) {
+            folderListEl.innerHTML = `<li class="folder-browser-empty" style="color:#ff8080;">${escapeHtml(data.error)}</li>`;
+          }
+
+          currentBrowsePath = data.currentPath || dirPath;
+          parentBrowsePath = data.parentPath;
+          currentDirLabel.textContent = currentBrowsePath;
+          folderPathInput.value = currentBrowsePath;
+
+          folderUpBtn.disabled = !parentBrowsePath;
+
+          // ショートカット更新
+          if (data.shortcuts && data.shortcuts.length > 0) {
+            folderShortcutsEl.innerHTML = '<span class="folder-shortcuts-label">ショートカット:</span>';
+            data.shortcuts.forEach((sc) => {
+              const chip = document.createElement('button');
+              chip.className = 'folder-shortcut-chip';
+              chip.textContent = sc.name;
+              chip.type = 'button';
+              chip.addEventListener('click', () => browseDirectory(sc.path));
+              folderShortcutsEl.appendChild(chip);
+            });
+          }
+
+          // ディレクトリ一覧更新
+          if (data.directories && data.directories.length > 0) {
+            folderListEl.innerHTML = '';
+            data.directories.forEach((dir) => {
+              const li = document.createElement('li');
+              li.className = 'folder-list-item';
+              li.innerHTML = `
+                <div class="folder-item-name">📁 <span>${escapeHtml(dir.name)}</span></div>
+                <span class="folder-item-action">開く ➔</span>
+              `;
+              li.addEventListener('click', () => browseDirectory(dir.path));
+              folderListEl.appendChild(li);
+            });
+          } else if (!data.error) {
+            folderListEl.innerHTML = '<li class="folder-browser-empty">サブフォルダはありません</li>';
+          }
+        } catch (err) {
+          console.error(err);
+          folderListEl.innerHTML = '<li class="folder-browser-empty" style="color:#ff8080;">ディレクトリの取得に失敗しました</li>';
+        }
+      }
+
+      async function applySelectedFolder(targetPath) {
+        modalSelectBtn.disabled = true;
+        modalSelectBtn.textContent = '変更中...';
+        try {
+          const res = await fetch('/api/select-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: targetPath }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            closeFolderModal();
+            loadVideos();
+            showPlayer(false);
+          } else {
+            alert('エラー: ' + (data.error || 'フォルダ変更に失敗しました'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('通信エラーが発生しました');
+        } finally {
+          modalSelectBtn.disabled = false;
+          modalSelectBtn.textContent = 'このフォルダに決定';
+        }
+      }
+
+      modalCloseBtn.addEventListener('click', closeFolderModal);
+      modalCancelBtn.addEventListener('click', closeFolderModal);
+      folderModal.addEventListener('click', (e) => {
+        if (e.target === folderModal) closeFolderModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && folderModal.style.display === 'flex') {
+          closeFolderModal();
+        }
+      });
+
+      folderUpBtn.addEventListener('click', () => {
+        if (parentBrowsePath) browseDirectory(parentBrowsePath);
+      });
+
+      folderPathGoBtn.addEventListener('click', () => {
+        const val = folderPathInput.value.trim();
+        if (val) browseDirectory(val);
+      });
+      folderPathInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = folderPathInput.value.trim();
+          if (val) browseDirectory(val);
+        }
+      });
+
+      modalSelectBtn.addEventListener('click', () => {
+        if (currentBrowsePath) {
+          applySelectedFolder(currentBrowsePath);
+        }
+      });
+
+      macFinderBtn.addEventListener('click', async () => {
+        macFinderBtn.disabled = true;
+        macFinderBtn.textContent = '選択中...';
+        try {
+          const res = await fetch('/api/select-folder', { method: 'POST' });
+          const data = await res.json();
+          if (data.success) {
+            closeFolderModal();
+            loadVideos();
+            showPlayer(false);
+          } else if (data.canceled) {
+            // キャンセル時は何もしない
+          } else {
+            alert('エラー: ' + (data.error || 'フォルダ選択に失敗しました'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('通信エラーが発生しました');
+        } finally {
+          macFinderBtn.disabled = false;
+          macFinderBtn.textContent = '🍎 Finderで選択';
+        }
+      });
+
+      selectFolderBtn.addEventListener('click', () => {
+        openFolderModal();
       });
 
       loadVideos();
