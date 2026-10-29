@@ -28,8 +28,9 @@ This is a minimal Node.js app: `server.js` (Express backend), `db.js` (SQLite pe
 - Provides functions for reading/updating favorites and playback positions with subsecond accuracy.
 
 **`server.js`** exposes routes:
-- `GET /api/videos` — walks `VIDEO_PATH` recursively via `buildTree()` and returns a JSON folder tree (folders before files, Japanese-aware natural sort). Hidden files/dirs (`.` prefix) and non-MP4 files are excluded.
-- `POST /api/select-folder` — Mac-only; launches an AppleScript `choose folder` dialog via `exec(osascript …)` and mutates the in-process `VIDEO_PATH` variable. The change is not persisted across restarts.
+- `GET /api/videos` — walks `VIDEO_PATH` recursively via `buildTree()` and returns a JSON folder tree (folders before files, Japanese-aware natural sort) along with `platform` and `hasNativePicker`. Hidden files/dirs (`.` prefix) and non-MP4 files are excluded.
+- `GET /api/browse-directories?path=<path>` — returns subdirectories, parent directory, current path, and platform-specific shortcuts for the Web folder picker modal.
+- `POST /api/select-folder` — updates in-process `VIDEO_PATH`. Accepts JSON `{ path }` for direct/Web picker updates across all platforms, or falls back to an AppleScript `choose folder` dialog via `osascript` on macOS when no path is provided.
 - `GET /api/favorites` — returns JSON array of favorite video paths from SQLite.
 - `POST /api/favorites/toggle` — toggles favorite state for a path in SQLite.
 - `POST /api/favorites/sync` — batch adds favorites (for automatic migration from browser `localStorage`).
@@ -40,6 +41,7 @@ This is a minimal Node.js app: `server.js` (Express backend), `db.js` (SQLite pe
 
 **`public/index.html`** is a self-contained SPA:
 - Fetches `/api/videos` and `/api/favorites` on load, renders a collapsible folder tree in the sidebar.
+- Features a built-in Web Folder Picker modal allowing directory navigation and selection on headless/Linux and Mac environments (with an option to invoke macOS Finder dialog when available).
 - Plays videos via `<video src="/video?path=…">` with Range requests handled natively by the browser.
 - Automatically saves playback position to SQLite via throttled `POST /api/playback` (and mirrors to `localStorage`), auto-resumes last played video on next load.
 - Migrates any legacy `localStorage` favorites/playback data to SQLite on first load.
@@ -49,9 +51,11 @@ This is a minimal Node.js app: `server.js` (Express backend), `db.js` (SQLite pe
 
 **`public/player.html`** is a minimal player page for opening videos in a separate tab:
 - Fullscreen-style video with audio muted by default.
-- Custom skip buttons: ⏪60s, ⏪30s, 30s⏩, 60s⏩.
+- Custom skip buttons: ⏪60s, 60s⏩.
 - Receives `path` and optional `t` (seconds) query parameters, fetches initial time from SQLite if `t` omitted, and saves playback progress to SQLite via `POST /api/playback`.
 
-## Mac-specific dependency
+## Cross-platform support
 
-The folder-selection feature (`/api/select-folder`) uses `osascript` and is Mac-only. The rest of the server is cross-platform.
+The server runs on macOS, Linux (Ubuntu, etc.), and other Node.js 22.5+ environments.
+- Directory browsing and folder switching works via the Web UI modal without needing desktop GUI access.
+- On macOS, native Finder folder selection dialog is optionally available alongside the Web modal.

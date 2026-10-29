@@ -191,6 +191,203 @@
       .btn:hover {
         background: rgba(255, 255, 255, 0.15);
       }
+      .btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      /* モーダル */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        padding: 1rem;
+      }
+      .modal {
+        background: var(--surface);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        width: 100%;
+        max-width: 650px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        animation: modalFadeIn 0.15s ease-out;
+      }
+      @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.96); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      .modal-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        font-size: 1.05rem;
+      }
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--muted);
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 0 0.35rem;
+        border-radius: 4px;
+      }
+      .modal-close:hover {
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.1);
+      }
+      .modal-body {
+        padding: 1rem 1.25rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .folder-path-bar {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .folder-path-input {
+        flex: 1;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 6px;
+        padding: 0.5rem 0.75rem;
+        color: var(--text);
+        font-size: 0.9rem;
+        font-family: inherit;
+      }
+      .folder-path-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .folder-shortcuts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .folder-shortcuts-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        margin-right: 0.2rem;
+      }
+      .folder-shortcut-chip {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        padding: 0.2rem 0.55rem;
+        font-size: 0.8rem;
+        color: var(--text);
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .folder-shortcut-chip:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: var(--accent);
+      }
+      .folder-browser {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        min-height: 240px;
+        max-height: 320px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .folder-browser-header {
+        padding: 0.5rem 0.75rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .current-dir-label {
+        font-size: 0.85rem;
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-family: monospace;
+      }
+      .folder-list {
+        list-style: none;
+        margin: 0;
+        padding: 0.35rem 0;
+        overflow-y: auto;
+        flex: 1;
+      }
+      .folder-list-item {
+        padding: 0.45rem 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        cursor: pointer;
+        font-size: 0.9rem;
+        border-radius: 4px;
+        margin: 0.1rem 0.35rem;
+        transition: background 0.1s;
+      }
+      .folder-list-item:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
+      .folder-item-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .folder-item-action {
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .folder-browser-empty {
+        padding: 2rem;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      .modal-footer {
+        padding: 0.85rem 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .modal-footer-right {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #0d0d12;
+        font-weight: 600;
+        border-color: transparent;
+      }
+      .btn-primary:hover {
+        background: var(--accent-hover);
+      }
+      .btn-sm {
+        padding: 0.25rem 0.6rem;
+        font-size: 0.8rem;
+      }
 
     </style>
   </head>
@@ -226,6 +423,47 @@
         </div>
         <p class="empty" id="emptyMsg">左の一覧から動画を選んでください</p>
       </main>
+    </div>
+
+    <!-- フォルダ選択モーダル -->
+    <div class="modal-backdrop" id="folderModal" style="display: none">
+      <div class="modal">
+        <div class="modal-header">
+          <span>📂 フォルダを選択</span>
+          <button class="modal-close" id="modalCloseBtn" title="閉じる">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="folder-path-bar">
+            <input
+              type="text"
+              id="folderPathInput"
+              class="folder-path-input"
+              placeholder="/path/to/folder"
+              autocomplete="off"
+            />
+            <button class="btn btn-primary" id="folderPathGoBtn">移動</button>
+          </div>
+          <div class="folder-shortcuts" id="folderShortcuts">
+            <span class="folder-shortcuts-label">ショートカット:</span>
+          </div>
+          <div class="folder-browser">
+            <div class="folder-browser-header">
+              <button class="btn btn-sm" id="folderUpBtn" title="親フォルダへ">⬆ 上へ</button>
+              <span class="current-dir-label" id="currentDirLabel">/</span>
+            </div>
+            <ul class="folder-list" id="folderList"></ul>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button class="btn" id="macFinderBtn" style="display: none">🍎 Finderで選択</button>
+          </div>
+          <div class="modal-footer-right">
+            <button class="btn" id="modalCancelBtn">キャンセル</button>
+            <button class="btn btn-primary" id="modalSelectBtn">このフォルダに決定</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script>
@@ -573,6 +811,10 @@
         return div.innerHTML.replace(/"/g, '&quot;');
       }
 
+      let serverInfo = { basePath: '', platform: '', hasNativePicker: false };
+      let currentBrowsePath = '';
+      let parentBrowsePath = null;
+
       async function loadVideos() {
         try {
           const [videosRes] = await Promise.all([
@@ -584,6 +826,16 @@
           const tree = data.tree || [];
           lastTree = tree;
           videoList = flattenTree(tree);
+          serverInfo = {
+            basePath: data.basePath || '',
+            platform: data.platform || '',
+            hasNativePicker: !!data.hasNativePicker,
+          };
+          currentBrowsePath = serverInfo.basePath;
+          if (serverInfo.basePath) {
+            selectFolderBtn.title = `現在のフォルダ: ${serverInfo.basePath}`;
+          }
+
           listStatusEl.textContent = '';
           listStatusEl.className = '';
 
@@ -660,21 +912,159 @@
         }
       });
 
-      selectFolderBtn.addEventListener('click', async () => {
-        const originalText = selectFolderBtn.textContent;
-        selectFolderBtn.textContent = '選択中...';
-        selectFolderBtn.disabled = true;
+      // フォルダ選択モーダル
+      const folderModal = document.getElementById('folderModal');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+      const modalCancelBtn = document.getElementById('modalCancelBtn');
+      const modalSelectBtn = document.getElementById('modalSelectBtn');
+      const macFinderBtn = document.getElementById('macFinderBtn');
+      const folderPathInput = document.getElementById('folderPathInput');
+      const folderPathGoBtn = document.getElementById('folderPathGoBtn');
+      const folderUpBtn = document.getElementById('folderUpBtn');
+      const currentDirLabel = document.getElementById('currentDirLabel');
+      const folderShortcutsEl = document.getElementById('folderShortcuts');
+      const folderListEl = document.getElementById('folderList');
 
+      function openFolderModal() {
+        folderModal.style.display = 'flex';
+        if (serverInfo.hasNativePicker) {
+          macFinderBtn.style.display = 'inline-block';
+        } else {
+          macFinderBtn.style.display = 'none';
+        }
+        browseDirectory(currentBrowsePath || serverInfo.basePath || '');
+      }
+
+      function closeFolderModal() {
+        folderModal.style.display = 'none';
+      }
+
+      async function browseDirectory(dirPath) {
+        folderListEl.innerHTML = '<li class="folder-browser-empty">読み込み中…</li>';
+        try {
+          const url = dirPath
+            ? `/api/browse-directories?path=${encodeURIComponent(dirPath)}`
+            : '/api/browse-directories';
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data.error && (!data.directories || data.directories.length === 0)) {
+            folderListEl.innerHTML = `<li class="folder-browser-empty" style="color:#ff8080;">${escapeHtml(data.error)}</li>`;
+          }
+
+          currentBrowsePath = data.currentPath || dirPath;
+          parentBrowsePath = data.parentPath;
+          currentDirLabel.textContent = currentBrowsePath;
+          folderPathInput.value = currentBrowsePath;
+
+          folderUpBtn.disabled = !parentBrowsePath;
+
+          // ショートカット更新
+          if (data.shortcuts && data.shortcuts.length > 0) {
+            folderShortcutsEl.innerHTML = '<span class="folder-shortcuts-label">ショートカット:</span>';
+            data.shortcuts.forEach((sc) => {
+              const chip = document.createElement('button');
+              chip.className = 'folder-shortcut-chip';
+              chip.textContent = sc.name;
+              chip.type = 'button';
+              chip.addEventListener('click', () => browseDirectory(sc.path));
+              folderShortcutsEl.appendChild(chip);
+            });
+          }
+
+          // ディレクトリ一覧更新
+          if (data.directories && data.directories.length > 0) {
+            folderListEl.innerHTML = '';
+            data.directories.forEach((dir) => {
+              const li = document.createElement('li');
+              li.className = 'folder-list-item';
+              li.innerHTML = `
+                <div class="folder-item-name">📁 <span>${escapeHtml(dir.name)}</span></div>
+                <span class="folder-item-action">開く ➔</span>
+              `;
+              li.addEventListener('click', () => browseDirectory(dir.path));
+              folderListEl.appendChild(li);
+            });
+          } else if (!data.error) {
+            folderListEl.innerHTML = '<li class="folder-browser-empty">サブフォルダはありません</li>';
+          }
+        } catch (err) {
+          console.error(err);
+          folderListEl.innerHTML = '<li class="folder-browser-empty" style="color:#ff8080;">ディレクトリの取得に失敗しました</li>';
+        }
+      }
+
+      async function applySelectedFolder(targetPath) {
+        modalSelectBtn.disabled = true;
+        modalSelectBtn.textContent = '変更中...';
+        try {
+          const res = await fetch('/api/select-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: targetPath }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            closeFolderModal();
+            loadVideos();
+            showPlayer(false);
+          } else {
+            alert('エラー: ' + (data.error || 'フォルダ変更に失敗しました'));
+          }
+        } catch (err) {
+          console.error(err);
+          alert('通信エラーが発生しました');
+        } finally {
+          modalSelectBtn.disabled = false;
+          modalSelectBtn.textContent = 'このフォルダに決定';
+        }
+      }
+
+      modalCloseBtn.addEventListener('click', closeFolderModal);
+      modalCancelBtn.addEventListener('click', closeFolderModal);
+      folderModal.addEventListener('click', (e) => {
+        if (e.target === folderModal) closeFolderModal();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && folderModal.style.display === 'flex') {
+          closeFolderModal();
+        }
+      });
+
+      folderUpBtn.addEventListener('click', () => {
+        if (parentBrowsePath) browseDirectory(parentBrowsePath);
+      });
+
+      folderPathGoBtn.addEventListener('click', () => {
+        const val = folderPathInput.value.trim();
+        if (val) browseDirectory(val);
+      });
+      folderPathInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = folderPathInput.value.trim();
+          if (val) browseDirectory(val);
+        }
+      });
+
+      modalSelectBtn.addEventListener('click', () => {
+        if (currentBrowsePath) {
+          applySelectedFolder(currentBrowsePath);
+        }
+      });
+
+      macFinderBtn.addEventListener('click', async () => {
+        macFinderBtn.disabled = true;
+        macFinderBtn.textContent = '選択中...';
         try {
           const res = await fetch('/api/select-folder', { method: 'POST' });
           const data = await res.json();
-          
           if (data.success) {
-            // 新しいフォルダが選択されたので動画一覧をリロード
+            closeFolderModal();
             loadVideos();
-            showPlayer(false); // プレイヤーを一旦隠す
+            showPlayer(false);
           } else if (data.canceled) {
-            // キャンセルされた場合は何もしない
+            // キャンセル時は何もしない
           } else {
             alert('エラー: ' + (data.error || 'フォルダ選択に失敗しました'));
           }
@@ -682,9 +1072,13 @@
           console.error(err);
           alert('通信エラーが発生しました');
         } finally {
-          selectFolderBtn.textContent = originalText;
-          selectFolderBtn.disabled = false;
+          macFinderBtn.disabled = false;
+          macFinderBtn.textContent = '🍎 Finderで選択';
         }
+      });
+
+      selectFolderBtn.addEventListener('click', () => {
+        openFolderModal();
       });
 
       loadVideos();
