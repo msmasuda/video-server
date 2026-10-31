@@ -48,7 +48,7 @@ This is a minimal Node.js app: `server.js` (Express backend), `db.js` (SQLite pe
 - Plays videos via `<video src="/video?path=…">` with Range requests handled natively by the browser.
 - Automatically saves playback position to SQLite via throttled `POST /api/playback` (and mirrors to `localStorage`), auto-resumes last played video on next load.
 - Migrates any legacy `localStorage` favorites/playback data to SQLite on first load.
-- The sidebar width is drag-resizable via a CSS grid resizer column.
+- The sidebar width is drag-resizable via a CSS grid resizer column and can be toggled open/closed via the header button or Ctrl+B / Cmd+B (state and width persisted in localStorage).
 - Custom skip buttons: ⏪60s, ⏪30s, 30s⏩, 60s⏩ (note: button labels say 60s/30s but the IDs say rewind30/rewind10 — the labels are the actual skip amounts).
 - Supports opening videos in a new tab via the `↗ 別タブで開く` button or the `↗` icon beside each video.
 
