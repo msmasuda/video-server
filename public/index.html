@@ -139,9 +139,11 @@
         padding: 0.35rem 0.5rem;
         cursor: pointer;
         border-radius: 6px;
-        overflow-wrap: anywhere;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         display: flex;
-        align-items: baseline;
+        align-items: center;
         gap: 0.35rem;
       }
       .video-tree .tree-folder:hover {
@@ -162,13 +164,17 @@
         padding: 0.35rem 0.5rem 0.35rem 1.25rem;
         cursor: pointer;
         border-radius: 6px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         justify-content: space-between;
       }
       .tree-file .file-label {
-        overflow-wrap: anywhere;
-        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         flex: 1;
       }
       .open-tab-icon {
