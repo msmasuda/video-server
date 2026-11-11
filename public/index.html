@@ -139,11 +139,9 @@
         padding: 0.35rem 0.5rem;
         cursor: pointer;
         border-radius: 6px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        overflow-wrap: anywhere;
         display: flex;
-        align-items: center;
+        align-items: baseline;
         gap: 0.35rem;
       }
       .video-tree .tree-folder:hover {
@@ -164,17 +162,13 @@
         padding: 0.35rem 0.5rem 0.35rem 1.25rem;
         cursor: pointer;
         border-radius: 6px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
       }
       .tree-file .file-label {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        overflow-wrap: anywhere;
+        min-width: 0;
         flex: 1;
       }
       .open-tab-icon {
@@ -834,7 +828,7 @@
           if (n.type === 'folder') {
             const hasChildren = n.children && n.children.length > 0;
             const collapsedClass = hasChildren ? ' collapsed' : '';
-            html += `<div class="tree-folder${collapsedClass}" ${hasChildren ? '' : 'style="opacity:.7"'}>`;
+            html += `<div class="tree-folder${collapsedClass}" title="${escapeAttr(n.name)}" ${hasChildren ? '' : 'style="opacity:.7"'}>`;
             html += hasChildren
               ? '<span class="arrow">▼</span>'
               : '<span class="arrow">・</span>';
@@ -844,7 +838,7 @@
             }
           } else {
             const star = isFavorite(n.path) ? '<span data-star style="color:var(--accent)">★ </span>' : '';
-            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}"><span class="file-label">${star}${escapeHtml(n.name)}</span><span class="open-tab-icon" title="別タブで開く">↗</span></li>`;
+            html += `<li class="tree-file" data-path="${escapeAttr(n.path)}" title="${escapeAttr(n.name)}"><span class="file-label">${star}${escapeHtml(n.name)}</span><span class="open-tab-icon" title="別タブで開く">↗</span></li>`;
           }
         }
         return html;
