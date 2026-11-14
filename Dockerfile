@@ -11,7 +11,10 @@ COPY server.js db.js ./
 COPY public ./public
 
 # データ保存先ディレクトリおよび動画マウント用ディレクトリを作成
-RUN mkdir -p /data /videos
+RUN mkdir -p /data /videos && chown node:node /data
+
+# root 権限を持たない node ユーザーで実行
+USER node
 
 # 環境変数の初期設定
 ENV NODE_ENV=production \

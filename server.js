@@ -2,10 +2,42 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
+const net = require('net');
+const os = require('os');
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 許可する Host 名（DNS リバインディング対策）
+// IP アドレス直指定・localhost・*.local・自ホスト名は常に許可し、追加分は ALLOWED_HOSTS（カンマ区切り）で指定
+const ALLOWED_HOSTS = new Set(
+  ['localhost', os.hostname()]
+    .concat((process.env.ALLOWED_HOSTS || '').split(','))
+    .map((h) => h.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+function isAllowedHost(hostHeader) {
+  if (!hostHeader) return false;
+  let host = hostHeader.toLowerCase();
+  // ポート番号を除去（IPv6 は [::1]:3000 形式）
+  if (host.startsWith('[')) {
+    host = host.slice(1, host.indexOf(']'));
+  } else {
+    host = host.replace(/:\d+$/, '');
+  }
+  if (net.isIP(host)) return true;
+  if (host.endsWith('.local') || host.endsWith('.localhost')) return true;
+  return ALLOWED_HOSTS.has(host);
+}
+
+app.use((req, res, next) => {
+  if (!isAllowedHost(req.headers.host)) {
+    return res.status(403).send('Forbidden host');
+  }
+  next();
+});
 
 // セキュリティヘッダー設定
 app.disable('x-powered-by');
@@ -103,9 +135,13 @@ function resolveVideoPath(relativePath) {
     if (!fs.existsSync(absolute)) return null;
     const realResolved = fs.realpathSync(absolute);
 
-    if (realResolved !== realBase && !realResolved.startsWith(realBase + path.sep)) {
+    if (!realResolved.startsWith(realBase + path.sep)) {
       return null;
     }
+    // 一覧 API と同じく、隠しファイル・フォルダを含まない MP4 のみ配信
+    const parts = path.relative(realBase, realResolved).split(path.sep);
+    if (parts.some((p) => p.startsWith('.'))) return null;
+    if (!realResolved.toLowerCase().endsWith('.mp4')) return null;
     return realResolved;
   } catch (err) {
     return null;
@@ -328,13 +364,40 @@ app.get('/video', (req, res) => {
   const fileSize = stat.size;
   const range = req.headers.range;
 
+  const sendStream = (options) => {
+    const stream = fs.createReadStream(filePath, options);
+    stream.on('error', (err) => {
+      console.error('stream error:', filePath, err.message);
+      if (!res.headersSent) res.status(500);
+      res.destroy();
+    });
+    res.on('close', () => stream.destroy());
+    stream.pipe(res);
+  };
+
   if (range) {
-    const match = range.match(/bytes=(\d+)-(\d*)/);
-    if (!match) {
-      return res.status(416).set({ 'Content-Range': `bytes */${fileSize}` }).send();
+    const notSatisfiable = () =>
+      res.status(416).set({ 'Content-Range': `bytes */${fileSize}` }).send();
+
+    // 単一レンジのみ対応（bytes=start-end / bytes=start- / bytes=-suffix）
+    const match = range.match(/^bytes=(\d*)-(\d*)$/);
+    if (!match || (!match[1] && !match[2]) || fileSize === 0) {
+      return notSatisfiable();
     }
-    const start = parseInt(match[1], 10);
-    const end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+    let start;
+    let end;
+    if (!match[1]) {
+      const suffix = parseInt(match[2], 10);
+      if (suffix === 0) return notSatisfiable();
+      start = Math.max(0, fileSize - suffix);
+      end = fileSize - 1;
+    } else {
+      start = parseInt(match[1], 10);
+      end = match[2] ? Math.min(parseInt(match[2], 10), fileSize - 1) : fileSize - 1;
+    }
+    if (start >= fileSize || start > end) {
+      return notSatisfiable();
+    }
     const chunkSize = end - start + 1;
 
     res.status(206);
@@ -344,14 +407,14 @@ app.get('/video', (req, res) => {
       'Content-Length': chunkSize,
       'Content-Type': 'video/mp4',
     });
-    fs.createReadStream(filePath, { start, end }).pipe(res);
+    sendStream({ start, end });
   } else {
     res.set({
       'Accept-Ranges': 'bytes',
       'Content-Length': fileSize,
       'Content-Type': 'video/mp4',
     });
-    fs.createReadStream(filePath).pipe(res);
+    sendStream();
   }
 });
 
