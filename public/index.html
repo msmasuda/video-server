@@ -88,7 +88,8 @@
         grid-column: 1;
         overflow-y: auto;
         overflow-x: hidden;
-        padding: 0.75rem 0;
+        /* 上余白は sticky の検索欄側で持つ（aside に付けると sticky 位置がずれてツリーと重なる） */
+        padding: 0 0 0.75rem;
         min-width: 0;
         transition: opacity 0.2s ease, visibility 0.2s;
       }
@@ -125,7 +126,6 @@
         position: sticky;
         top: 0;
         z-index: 1;
-        margin-top: -0.75rem;
         padding: 0.75rem 0.5rem 0.5rem;
         background: var(--bg);
         display: flex;
