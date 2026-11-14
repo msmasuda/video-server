@@ -106,6 +106,14 @@ VIDEO_PATH="/mnt/videos" npm start
 PORT=8080 VIDEO_PATH="/mnt/videos" npm start
 ```
 
+DNS リバインディング対策として、IP アドレス直指定・`localhost`・`*.local`・サーバー自身のホスト名以外の Host 名でのアクセスは拒否されます。独自のホスト名（例: `nas.home.arpa`）でアクセスする場合は `ALLOWED_HOSTS` にカンマ区切りで指定してください。
+
+```bash
+ALLOWED_HOSTS="nas.home.arpa,video.lan" npm start
+```
+
+> ※ Docker イメージは root ではなく `node` ユーザー（UID 1000）で動作します。以前のバージョンで作成した `./data` が root 所有の場合は `sudo chown -R 1000:1000 ./data` で所有者を変更してください。
+
 ## 使い方
 
 1. ブラウザで `http://localhost:3000`（またはサーバーのIPアドレス:3000）を開く

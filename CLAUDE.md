@@ -39,7 +39,8 @@ This is a minimal Node.js app: `server.js` (Express backend), `db.js` (SQLite pe
 - `POST /api/favorites/sync` — batch adds favorites (for automatic migration from browser `localStorage`).
 - `GET /api/playback` — returns playback state (`path` and `time`) for specified path or the most recently played video.
 - `POST /api/playback` — updates/upserts playback position in SQLite.
-- `GET /video?path=<relative>` — streams the requested MP4 with full HTTP Range support for browser seeking. `resolveVideoPath()` sanitizes the path to prevent directory traversal.
+- `GET /video?path=<relative>` — streams the requested MP4 with HTTP Range support (single range, suffix ranges, 416 on unsatisfiable) for browser seeking. `resolveVideoPath()` prevents directory traversal (realpath check) and only serves `.mp4` files with no hidden (`.`-prefixed) path segments.
+- A Host-header allowlist middleware (DNS rebinding protection) rejects requests unless the host is an IP literal, `localhost`, `*.local`, the machine's hostname, or listed in `ALLOWED_HOSTS` (comma-separated env var).
 - `express.static('public')` serves the frontend.
 
 **`public/index.html`** is a self-contained SPA:
