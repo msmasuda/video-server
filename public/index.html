@@ -121,6 +121,59 @@
         align-items: center;
         min-width: 0;
       }
+      .sidebar-search {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        margin-top: -0.75rem;
+        padding: 0.75rem 0.5rem 0.5rem;
+        background: var(--bg);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem;
+      }
+      .sidebar-search input {
+        flex: 1;
+        min-width: 0;
+        background: var(--surface);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text);
+        padding: 0.4rem 0.6rem;
+        border-radius: 6px;
+        font-size: 0.85rem;
+      }
+      .sidebar-search input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .fav-filter-btn {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .fav-filter-btn[aria-pressed='true'] {
+        background: rgba(124, 156, 255, 0.2);
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .search-status {
+        width: 100%;
+        font-size: 0.75rem;
+        color: var(--muted);
+      }
+      .search-status:empty {
+        display: none;
+      }
+      .video-tree .filter-hidden {
+        display: none !important;
+      }
+      /* 絞り込み中は該当ファイルを含むフォルダを自動展開 */
+      .video-tree.filtering .tree-folder.collapsed + ul {
+        display: block;
+      }
+      .video-tree.filtering .tree-folder .arrow {
+        transform: none;
+      }
       .video-tree {
         list-style: none;
         margin: 0;
@@ -476,6 +529,23 @@
         <button class="btn" id="selectFolderBtn">📂 フォルダを選択</button>
       </header>
       <aside>
+        <div class="sidebar-search">
+          <input
+            type="search"
+            id="searchInput"
+            placeholder="ファイル名で検索"
+            aria-label="ファイル名で検索"
+            autocomplete="off"
+          />
+          <button
+            class="btn btn-sm fav-filter-btn"
+            id="favFilterBtn"
+            type="button"
+            aria-pressed="false"
+            title="お気に入りのみ表示"
+          >★ のみ</button>
+          <div class="search-status" id="searchStatus"></div>
+        </div>
         <ul class="video-tree" id="videoTree"></ul>
         <p class="loading" id="listStatus">読み込み中…</p>
       </aside>
@@ -909,7 +979,64 @@
             label.prepend(star);
           }
         });
+        applyFilter();
       }
+
+      // サイドバー検索（ファイル名の部分一致・お気に入りのみ）
+      const searchInput = document.getElementById('searchInput');
+      const favFilterBtn = document.getElementById('favFilterBtn');
+      const searchStatusEl = document.getElementById('searchStatus');
+      let favOnly = false;
+
+      // 全角/半角・大文字/小文字・濁点の分離を吸収して比較
+      function normalizeForSearch(s) {
+        return (s || '').normalize('NFKC').toLowerCase();
+      }
+
+      function applyFilter() {
+        const query = normalizeForSearch(searchInput.value.trim());
+        const filtering = query !== '' || favOnly;
+        videoTreeEl.classList.toggle('filtering', filtering);
+
+        let matchCount = 0;
+        videoTreeEl.querySelectorAll('.tree-file').forEach((el) => {
+          const visible =
+            !filtering ||
+            ((!query || normalizeForSearch(el.title).includes(query)) &&
+              (!favOnly || isFavorite(el.dataset.path)));
+          el.classList.toggle('filter-hidden', !visible);
+          if (visible) matchCount++;
+        });
+
+        // 該当ファイルを含まないフォルダは非表示
+        videoTreeEl.querySelectorAll('.tree-folder').forEach((el) => {
+          const ul = el.nextElementSibling?.tagName === 'UL' ? el.nextElementSibling : null;
+          const visible =
+            !filtering || !!(ul && ul.querySelector('.tree-file:not(.filter-hidden)'));
+          el.classList.toggle('filter-hidden', !visible);
+          if (ul) ul.classList.toggle('filter-hidden', !visible);
+        });
+
+        searchStatusEl.textContent = filtering
+          ? matchCount > 0
+            ? `${matchCount} 件`
+            : '該当する動画はありません'
+          : '';
+      }
+
+      searchInput.addEventListener('input', applyFilter);
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && searchInput.value) {
+          e.stopPropagation();
+          searchInput.value = '';
+          applyFilter();
+        }
+      });
+      favFilterBtn.addEventListener('click', () => {
+        favOnly = !favOnly;
+        favFilterBtn.setAttribute('aria-pressed', favOnly ? 'true' : 'false');
+        applyFilter();
+      });
 
       function escapeAttr(s) {
         const div = document.createElement('div');
@@ -947,6 +1074,7 @@
 
           videoTreeEl.innerHTML = renderTree(tree);
           rebindTree();
+          applyFilter();
 
           // 直近の再生状態を取得（SQLite）
           let resumeTarget = null;
