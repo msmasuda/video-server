@@ -81,6 +81,14 @@ docker compose logs -f
 docker compose down
 ```
 
+アプリを更新した場合（`git pull` 後）は、イメージの再ビルドが必要です。フロントエンド（`public/`）もイメージ内にコピーされているため、ブラウザの再読み込みだけでは反映されません。`--pull` を付けるとベースイメージ（Node.js）のセキュリティ更新も取り込まれます。
+
+```bash
+git pull
+docker compose build --pull
+docker compose up -d
+```
+
 ### 方法 B: Node.js 直接起動
 
 動画フォルダを環境変数 `VIDEO_PATH` で指定して起動します。
@@ -121,7 +129,8 @@ ALLOWED_HOSTS="nas.home.arpa,video.lan" npm start
 3. **お気に入り登録**: 再生中に「☆ お気に入り」ボタンを押すと登録され、ツリー内に★が表示されます
 4. **別タブで再生**: 動画項目の「↗」アイコンまたは「↗ 別タブで開く」ボタンを押すと、専用プレイヤー画面が別タブで開きます
 5. **フォルダ切り替え**: ヘッダーの「📂 フォルダを選択」ボタンで Web フォルダピッカーが開き、サーバー内のディレクトリをブラウズ・選択できます（Mac ローカルでは Finder ダイアログも併用可能）
-6. **続きから再生**: 再生位置やお気に入りは SQLite に自動保存されるため、次回アクセス時や別ブラウザから開いた際もそのまま引き継がれます
+6. **検索・絞り込み**: サイドバー上部の検索欄でファイル名の部分一致検索（全角/半角・大文字/小文字は区別しません）、「★ のみ」ボタンでお気に入りのみ表示できます。両方を組み合わせることも可能で、`Esc` で検索語をクリアします
+7. **続きから再生**: 再生位置やお気に入りは SQLite に自動保存されるため、次回アクセス時や別ブラウザから開いた際もそのまま引き継がれます
 
 ## Linux (Ubuntu 24.04 CLI) での利用ガイド
 
@@ -144,13 +153,46 @@ Mac で使っていた外付けHDD（Journaled HFS+）は、Ubuntu 上で読み�
 # HFS+ パッケージのインストール
 sudo apt install -y hfsprogs
 
-# デバイス名を確認（例: /dev/sdb2）
+# デバイス名・ラベル・UUID を確認（例: /dev/sdb2）
 lsblk -f
 
-# 読み取り専用 (-o ro) でマウント
+# 読み取り専用 (ro) でマウント
 sudo mkdir -p /mnt/videos
-sudo mount -t hfsplus -o ro /dev/sdb2 /mnt/videos
+sudo mount -t hfsplus -o ro,uid=1000,gid=1000 /dev/sdb2 /mnt/videos
 ```
+
+- `uid=1000,gid=1000` は HDD 内のファイルを UID 1000 の所有として見せるオプションです。Mac で作成したファイルは所有者・パーミッションがまちまちなため、非 root（`node` ユーザー = UID 1000）で動く Docker コンテナからも確実に読めるよう指定します。systemd で直接起動する場合は、実行ユーザーの UID（`id -u` で確認）に合わせてください。
+- Docker で利用している場合、**マウントした後に `docker compose restart` が必要**です。コンテナは起動時点のマウント状態しか見えないため、後から HDD をマウントしても空のフォルダに見えます。
+
+#### 複数台の HDD を使う場合
+
+`/mnt/videos` 配下にサブフォルダを作り、1 台ずつマウントします。`VIDEO_DIR`（Docker）/ `VIDEO_PATH`（直接起動）は親の `/mnt/videos` のままで、ツリー上では HDD ごとのフォルダとして表示されます。
+
+```bash
+sudo mkdir -p /mnt/videos/HDD1 /mnt/videos/HDD2
+sudo mount -t hfsplus -o ro,uid=1000,gid=1000 /dev/sdb2 /mnt/videos/HDD1
+sudo mount -t hfsplus -o ro,uid=1000,gid=1000 /dev/sdc1 /mnt/videos/HDD2
+```
+
+#### 起動時に自動マウントする（/etc/fstab）
+
+`mount` コマンドでのマウントは再起動で外れます。`/etc/fstab` に追記すると起動時に自動でマウントされます。デバイス名（`sdb` / `sdc`）は接続順で入れ替わることがあるため、`lsblk -f` で確認した UUID で指定してください。`nofail` を付けると、HDD 未接続時でも起動が止まりません。
+
+```
+UUID=<HDD1 の UUID>  /mnt/videos/HDD1  hfsplus  ro,nofail,uid=1000,gid=1000  0  0
+UUID=<HDD2 の UUID>  /mnt/videos/HDD2  hfsplus  ro,nofail,uid=1000,gid=1000  0  0
+```
+
+追記後は書式を確認してからマウントします（`/swap.img` に関する警告は Ubuntu 標準のスワップファイルによるもので問題ありません）。
+
+```bash
+sudo systemctl daemon-reload
+sudo findmnt --verify   # errors が 0 であることを確認
+sudo mount -a
+findmnt | grep /mnt/videos
+```
+
+> ※ マシン再起動時に HDD のマウントより先にコンテナが起動すると、動画が空に見えることがあります。その場合は `docker compose restart` してください。
 
 ### 3. systemd によるサービス化（バックグラウンド常駐）
 テンプレートファイル `video-server.service.example` を参考にサービス登録できます：
